@@ -563,12 +563,10 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             label="Employee strike price"
             hint="High strike prices can leave paper gains unusable even when the company survives to an exit."
           >
-            <input
-              type="number"
-              step="0.01"
+            <MoneyInput
               value={config.employee.strikePrice}
-              onChange={(event) => onNestedChange("employee", { strikePrice: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("employee", { strikePrice: value })}
+              showScaleHint={false}
             />
           </Field>
           <Field

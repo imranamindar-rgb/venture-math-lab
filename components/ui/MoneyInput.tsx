@@ -2,13 +2,13 @@
 
 import { ChangeEvent, useEffect, useState } from "react";
 
-import { formatMillionsValue, formatNumberInput } from "@/lib/format";
+import { formatMoneyScaleHint, formatNumberInput } from "@/lib/format";
 
 interface MoneyInputProps {
   value: number;
   onValueChange: (value: number) => void;
   className?: string;
-  showMillionsHint?: boolean;
+  showScaleHint?: boolean;
 }
 
 function sanitizeMoneyInput(raw: string) {
@@ -42,7 +42,7 @@ export function MoneyInput({
   value,
   onValueChange,
   className = "w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm",
-  showMillionsHint = true,
+  showScaleHint = true,
 }: MoneyInputProps) {
   const [displayValue, setDisplayValue] = useState(formatNumberInput(value));
 
@@ -68,8 +68,8 @@ export function MoneyInput({
   return (
     <div className="space-y-2">
       <input type="text" inputMode="decimal" value={displayValue} onChange={handleChange} className={className} />
-      {showMillionsHint ? (
-        <p className="text-xs leading-5 text-slate-500">Reads as {formatMillionsValue(value)}</p>
+      {showScaleHint ? (
+        <p className="text-xs leading-5 text-slate-500">Reads as {formatMoneyScaleHint(value)}</p>
       ) : null}
     </div>
   );
