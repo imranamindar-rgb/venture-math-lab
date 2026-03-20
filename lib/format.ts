@@ -6,6 +6,21 @@ export function formatCurrency(value: number) {
   }).format(value);
 }
 
+export function formatNumberInput(value: number, maximumFractionDigits = 2) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits,
+  }).format(value);
+}
+
+export function formatMillionsValue(value: number) {
+  const millions = value / 1_000_000;
+  const fractionDigits = Math.abs(millions) >= 10 ? 0 : 1;
+  return `$${millions.toLocaleString("en-US", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })}M`;
+}
+
 export function formatPercent(value: number, maximumFractionDigits = 1) {
   return new Intl.NumberFormat("en-US", {
     style: "percent",

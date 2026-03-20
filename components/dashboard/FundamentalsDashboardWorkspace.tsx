@@ -7,6 +7,7 @@ import { stagePresets } from "@/data/presets";
 import { calculateInvestorOwnership, calculatePostMoney, calculateRequiredExitValue } from "@/lib/engines/deterministic-finance";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { HistogramChart } from "@/components/charts/HistogramChart";
 import { OwnershipChart } from "@/components/charts/OwnershipChart";
 import { ProbabilityChart } from "@/components/charts/ProbabilityChart";
@@ -112,10 +113,9 @@ export function FundamentalsDashboardWorkspace() {
             </label>
             <label className="space-y-2 text-sm">
               <span className="font-heading font-semibold text-foreground">Investor check</span>
-              <input
-                type="number"
+              <MoneyInput
                 value={checkSize}
-                onChange={(event) => setCheckSize(Number(event.target.value))}
+                onValueChange={setCheckSize}
                 className="w-full rounded-2xl border border-border bg-white px-4 py-3"
               />
             </label>
@@ -131,10 +131,9 @@ export function FundamentalsDashboardWorkspace() {
             </label>
             <label className="space-y-2 text-sm">
               <span className="font-heading font-semibold text-foreground">Fund size</span>
-              <input
-                type="number"
+              <MoneyInput
                 value={fundSize}
-                onChange={(event) => setFundSize(Number(event.target.value))}
+                onValueChange={setFundSize}
                 className="w-full rounded-2xl border border-border bg-white px-4 py-3"
               />
             </label>

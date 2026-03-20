@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { stageOrder, FundingStage, MarketOverlay, SectorOverlay } from "@/lib/sim/types";
 import { Card } from "@/components/ui/Card";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { HistogramChart } from "@/components/charts/HistogramChart";
 import { ProbabilityChart } from "@/components/charts/ProbabilityChart";
 import {
@@ -31,10 +32,9 @@ export function FundConstructionWorkspace() {
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
             <label className="space-y-2 text-sm">
               <span className="font-heading font-semibold text-foreground">Fund size</span>
-              <input
-                type="number"
+              <MoneyInput
                 value={config.fundSize}
-                onChange={(event) => setConfig((current) => ({ ...current, fundSize: Number(event.target.value) }))}
+                onValueChange={(value) => setConfig((current) => ({ ...current, fundSize: value }))}
                 className="w-full rounded-2xl border border-border bg-white px-4 py-3"
               />
             </label>
@@ -54,19 +54,17 @@ export function FundConstructionWorkspace() {
             </label>
             <label className="space-y-2 text-sm">
               <span className="font-heading font-semibold text-foreground">Initial check size</span>
-              <input
-                type="number"
+              <MoneyInput
                 value={config.initialCheckSize}
-                onChange={(event) => setConfig((current) => ({ ...current, initialCheckSize: Number(event.target.value) }))}
+                onValueChange={(value) => setConfig((current) => ({ ...current, initialCheckSize: value }))}
                 className="w-full rounded-2xl border border-border bg-white px-4 py-3"
               />
             </label>
             <label className="space-y-2 text-sm">
               <span className="font-heading font-semibold text-foreground">Follow-on check size</span>
-              <input
-                type="number"
+              <MoneyInput
                 value={config.followOnCheckSize}
-                onChange={(event) => setConfig((current) => ({ ...current, followOnCheckSize: Number(event.target.value) }))}
+                onValueChange={(value) => setConfig((current) => ({ ...current, followOnCheckSize: value }))}
                 className="w-full rounded-2xl border border-border bg-white px-4 py-3"
               />
             </label>

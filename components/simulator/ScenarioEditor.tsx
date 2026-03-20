@@ -4,6 +4,7 @@ import type { ChangeEvent } from "react";
 
 import { stagePresets } from "@/data/presets";
 import { Field } from "@/components/ui/Field";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { normalizeFounders, sumFounderOwnership } from "@/lib/founders";
 import { ScenarioConfig, SectorOverlay, MarketOverlay, FundingStage, RoundKind } from "@/lib/sim/types";
 import { formatCurrency, formatPercent } from "@/lib/format";
@@ -142,22 +143,18 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             label="Current pre-money valuation"
             hint="The model uses this as the anchor for step-up math, which is more important than the headline valuation by itself."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.currentPreMoney}
-              onChange={(event) => onChange({ currentPreMoney: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onChange({ currentPreMoney: value })}
             />
           </Field>
           <Field
             label="Current round size or raise amount"
             hint="Use the full round size here, not just the modeled investor check. In priced rounds it sets total dilution. In SAFE and note cases it anchors company cash runway."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.currentRoundSize}
-              onChange={(event) => onChange({ currentRoundSize: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onChange({ currentRoundSize: value })}
             />
           </Field>
           <Field
@@ -311,22 +308,18 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             label="SAFE post-money cap"
             hint="For post-money SAFEs, a lower cap locks more future ownership for the investor before the Series A price is known."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.safe.postMoneyCap}
-              onChange={(event) => onNestedChange("safe", { postMoneyCap: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("safe", { postMoneyCap: value })}
             />
           </Field>
           <Field
             label="SAFE investment"
             hint="This check converts when a qualified financing happens and adds to the investor's preference stack."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.safe.investment}
-              onChange={(event) => onNestedChange("safe", { investment: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("safe", { investment: value })}
             />
           </Field>
           <Field
@@ -386,11 +379,9 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             label="Note cap"
             hint="Notes price as the better of cap or discount and stay senior to equity in weak exits, so they can be harsher than a clean equity round."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.note.preMoneyCap}
-              onChange={(event) => onNestedChange("note", { preMoneyCap: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("note", { preMoneyCap: value })}
             />
           </Field>
           <Field
@@ -420,33 +411,27 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             label="Cash on hand"
             hint="Current unrestricted cash available to fund the company before the next financing event."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.operating.cashOnHand}
-              onChange={(event) => onNestedChange("operating", { cashOnHand: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("operating", { cashOnHand: value })}
             />
           </Field>
           <Field
             label="Monthly burn"
             hint="Net cash burn per month after revenue collection. This is the core runway driver."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.operating.monthlyBurn}
-              onChange={(event) => onNestedChange("operating", { monthlyBurn: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("operating", { monthlyBurn: value })}
             />
           </Field>
           <Field
             label="Monthly revenue"
             hint="Current monthly revenue. The operator layer annualizes this and projects it toward the next financing benchmark."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.operating.monthlyRevenue}
-              onChange={(event) => onNestedChange("operating", { monthlyRevenue: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("operating", { monthlyRevenue: value })}
             />
           </Field>
           <Field
@@ -489,55 +474,45 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             label="Accounts receivable"
             hint="Use this to teach the balance-sheet side of growth. Revenue can be booked before cash arrives."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.operating.accountsReceivable}
-              onChange={(event) => onNestedChange("operating", { accountsReceivable: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("operating", { accountsReceivable: value })}
             />
           </Field>
           <Field
             label="Inventory"
             hint="Leave at zero for software. Use it for hardware or hybrid businesses where cash gets trapped before revenue is recognized."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.operating.inventory}
-              onChange={(event) => onNestedChange("operating", { inventory: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("operating", { inventory: value })}
             />
           </Field>
           <Field
             label="Accounts payable"
             hint="Supplier payables are current liabilities. They help working capital but can disguise fragility if cash is thin."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.operating.accountsPayable}
-              onChange={(event) => onNestedChange("operating", { accountsPayable: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("operating", { accountsPayable: value })}
             />
           </Field>
           <Field
             label="Monthly capex"
             hint="This is cash that leaves the business for long-lived assets. It matters for free cash flow even when burn looks manageable."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.operating.capexMonthly}
-              onChange={(event) => onNestedChange("operating", { capexMonthly: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("operating", { capexMonthly: value })}
             />
           </Field>
           <Field
             label="Transaction fees"
             hint="Modeled legal, banking, and closing costs for the current financing. These reduce how much new cash actually lands on the balance sheet."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.operating.transactionFees}
-              onChange={(event) => onNestedChange("operating", { transactionFees: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("operating", { transactionFees: value })}
             />
           </Field>
         </div>
@@ -555,11 +530,9 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             label="Investor initial check"
             hint="Use this for the modeled investor's priced-round check. If the current instrument is a SAFE or note, the simulator follows SAFE investment or note principal instead when they differ."
           >
-            <input
-              type="number"
+            <MoneyInput
               value={config.investor.initialCheck}
-              onChange={(event) => onNestedChange("investor", { initialCheck: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              onValueChange={(value) => onNestedChange("investor", { initialCheck: value })}
             />
           </Field>
           <Field
