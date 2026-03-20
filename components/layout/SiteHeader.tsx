@@ -11,13 +11,19 @@ export function SiteHeader() {
           <div>
             <p className="font-heading text-base font-semibold text-foreground">Venture Math Lab</p>
             <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
-              Monte Carlo for startup financing risk
+              Three engines for venture finance
             </p>
           </div>
         </Link>
         <nav className="flex items-center gap-5 text-sm text-slate-600">
+          <Link href="/calculator" className="hover:text-slate-950">
+            Calculator
+          </Link>
           <Link href="/simulator" className="hover:text-slate-950">
             Simulator
+          </Link>
+          <Link href="/cap-table" className="hover:text-slate-950">
+            Cap Table
           </Link>
           <Link href="/compare" className="hover:text-slate-950">
             Compare

@@ -4,6 +4,7 @@ import type { ChangeEvent } from "react";
 
 import { stagePresets } from "@/data/presets";
 import { Field } from "@/components/ui/Field";
+import { normalizeFounders, sumFounderOwnership } from "@/lib/founders";
 import { ScenarioConfig, SectorOverlay, MarketOverlay, FundingStage, RoundKind } from "@/lib/sim/types";
 import { formatCurrency, formatPercent } from "@/lib/format";
 
@@ -17,8 +18,39 @@ function numberValue(event: ChangeEvent<HTMLInputElement>) {
   return Number(event.target.value);
 }
 
+function resizeFounders(config: ScenarioConfig, count: number) {
+  const current = normalizeFounders(config.founders, config.capTable.founderPercent);
+  const safeCount = Math.max(1, count);
+
+  if (current.length === safeCount) {
+    return current;
+  }
+
+  if (current.length < safeCount) {
+    const next = [...current];
+    for (let index = current.length; index < safeCount; index += 1) {
+      next.push({
+        id: `founder_${index + 1}`,
+        name: `Founder ${index + 1}`,
+        ownershipPercent: 0,
+      });
+    }
+    return next;
+  }
+
+  const kept = current.slice(0, safeCount);
+  const removedOwnership = current.slice(safeCount).reduce((sum, founder) => sum + founder.ownershipPercent, 0);
+  kept[0] = {
+    ...kept[0],
+    ownershipPercent: kept[0].ownershipPercent + removedOwnership,
+  };
+  return kept;
+}
+
 export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEditorProps) {
   const stagePreset = stagePresets[config.currentStage];
+  const founders = normalizeFounders(config.founders, config.capTable.founderPercent);
+  const founderTotal = sumFounderOwnership(founders, config.capTable.founderPercent);
 
   return (
     <div className="space-y-8">
@@ -129,21 +161,29 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             />
           </Field>
           <Field
-            label="Founder ownership before future rounds"
-            hint="Use the current fully diluted founder percentage. This number drives the control-threshold warnings."
+            label="Number of cofounders"
+            hint="Set how many founders currently share the fully diluted founder stake. Each founder can then be named and sized separately."
           >
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={config.capTable.founderPercent}
-              onChange={(event) =>
-                onNestedChange("capTable", {
-                  founderPercent: numberValue(event),
-                })
-              }
+            <select
+              value={founders.length}
+              onChange={(event) => {
+                const nextFounders = resizeFounders(config, Number(event.target.value));
+                onChange({
+                  founders: nextFounders,
+                  capTable: {
+                    ...config.capTable,
+                    founderPercent: sumFounderOwnership(nextFounders, config.capTable.founderPercent),
+                  },
+                });
+              }}
               className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
-            />
+            >
+              {[1, 2, 3, 4, 5].map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field
             label="Employee common ownership"
@@ -196,6 +236,66 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
               className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
             />
           </Field>
+        </div>
+        <div className="rounded-panel border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-heading text-base font-semibold text-foreground">Founder equity split</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Enter each founder&apos;s current fully diluted ownership. The total feeds the founder control and dilution math.
+              </p>
+            </div>
+            <div className="rounded-full border border-border bg-white px-3 py-1 text-xs uppercase tracking-[0.16em] text-slate-500">
+              Total {founderTotal.toFixed(1)}%
+            </div>
+          </div>
+          <div className="mt-4 grid gap-4">
+            {founders.map((founder, index) => (
+              <div key={founder.id} className="grid gap-4 md:grid-cols-[1.2fr,0.8fr]">
+                <Field
+                  label={`Founder ${index + 1} name`}
+                  hint="Use role-based labels if you want to keep scenarios generic across companies."
+                >
+                  <input
+                    type="text"
+                    value={founder.name}
+                    onChange={(event) => {
+                      const nextFounders = founders.map((entry) =>
+                        entry.id === founder.id ? { ...entry, name: event.target.value } : entry,
+                      );
+                      onChange({ founders: nextFounders });
+                    }}
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+                  />
+                </Field>
+                <Field
+                  label={`Founder ${index + 1} equity`}
+                  hint="This is the founder's share of the whole company, not just the founder pool."
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.1"
+                    value={founder.ownershipPercent}
+                    onChange={(event) => {
+                      const nextFounders = founders.map((entry) =>
+                        entry.id === founder.id ? { ...entry, ownershipPercent: numberValue(event) } : entry,
+                      );
+                      onChange({
+                        founders: nextFounders,
+                        capTable: {
+                          ...config.capTable,
+                          founderPercent: sumFounderOwnership(nextFounders, config.capTable.founderPercent),
+                        },
+                      });
+                    }}
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+                  />
+                </Field>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

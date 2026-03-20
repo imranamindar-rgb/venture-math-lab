@@ -178,6 +178,18 @@ const standardScenario: ScenarioConfig = {
     employeePoolPercent: 15,
     priorInvestorPercent: 13,
   },
+  founders: [
+    {
+      id: "founder_1",
+      name: "Founder 1",
+      ownershipPercent: 40,
+    },
+    {
+      id: "founder_2",
+      name: "Founder 2",
+      ownershipPercent: 27,
+    },
+  ],
   safe: {
     enabled: true,
     investment: 3_800_000,
@@ -232,6 +244,18 @@ const stressScenario: ScenarioConfig = {
     employeePoolPercent: 14,
     priorInvestorPercent: 17,
   },
+  founders: [
+    {
+      id: "founder_1",
+      name: "Founder 1",
+      ownershipPercent: 35,
+    },
+    {
+      id: "founder_2",
+      name: "Founder 2",
+      ownershipPercent: 28,
+    },
+  ],
   safe: {
     enabled: false,
     investment: 0,

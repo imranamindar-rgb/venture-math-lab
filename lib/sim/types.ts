@@ -47,6 +47,12 @@ export interface StartingCapTableInput {
   priorInvestorPercent: number;
 }
 
+export interface FounderStakeInput {
+  id: string;
+  name: string;
+  ownershipPercent: number;
+}
+
 export interface SafeConfig {
   enabled: boolean;
   investment: number;
@@ -98,6 +104,7 @@ export interface ScenarioConfig {
   marketOverlay: MarketOverlay;
   sectorOverlay: SectorOverlay;
   capTable: StartingCapTableInput;
+  founders?: FounderStakeInput[];
   safe: SafeConfig;
   note: ConvertibleNoteConfig;
   investor: InvestorConfig;
@@ -261,6 +268,15 @@ export const scenarioConfigSchema = z.object({
     employeePoolPercent: z.number().min(0).max(100),
     priorInvestorPercent: z.number().min(0).max(100),
   }),
+  founders: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        ownershipPercent: z.number().min(0).max(100),
+      }),
+    )
+    .optional(),
   safe: z.object({
     enabled: z.boolean(),
     investment: z.number().nonnegative(),

@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/Button";
 
 const pillars = [
   {
-    title: "Power-law aware",
-    body: "The simulator keeps the core VC truth intact: the mean is driven by a tiny tail of outliers, not by typical deals.",
+    title: "Deterministic finance engine",
+    body: "Inspectable formulas for post-money, ownership, return thresholds, and benchmark dilution before uncertainty widens the range.",
   },
   {
-    title: "Stakeholder-specific",
-    body: "Founders, employees, and investors all see different slices of the same financing path, including dilution and liquidity timing.",
+    title: "Monte Carlo engine",
+    body: "Power-law aware simulation for founders, employees, and investors under skew, failure, down rounds, and path dependence.",
   },
   {
-    title: "Explainable inputs",
-    body: "Each input has guidance so the product works as a decision tool, not just a math sandbox for people who already know the jargon.",
+    title: "Cap table and waterfall engine",
+    body: "Fully diluted ownership, SAFE and note conversion, option-pool refreshes, and liquidation outcomes under standard venture terms.",
   },
 ];
 
@@ -27,19 +27,21 @@ export default function HomePage() {
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Venture capital math for executives</p>
             <h1 className="mt-4 max-w-4xl font-heading text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
-              Simulate the financing paths that reshape founder ownership, employee equity, and investor returns.
+              Three venture finance engines for pricing deals, simulating uncertainty, and decoding the cap table.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              Venture Math Lab models priced rounds, SAFEs, capped notes, dilution, preferences, and partial secondary
-              liquidity under Monte Carlo uncertainty. It is built for leaders who need to understand the economics before
-              the term sheet arrives.
+              Venture Math Lab combines deterministic formulas, Monte Carlo simulation, and cap-table waterfall logic so
+              founders, operators, and investors can inspect the venture math before the term sheet arrives.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/simulator">
-                <Button>Open simulator</Button>
+              <Link href="/calculator">
+                <Button>Open calculator</Button>
               </Link>
-              <Link href="/compare">
-                <Button variant="secondary">Compare scenarios</Button>
+              <Link href="/simulator">
+                <Button variant="secondary">Run simulation</Button>
+              </Link>
+              <Link href="/cap-table">
+                <Button variant="secondary">Inspect cap table</Button>
               </Link>
               <Link href="/methodology">
                 <Button variant="ghost">Read methodology</Button>
@@ -53,16 +55,17 @@ export default function HomePage() {
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Core questions</p>
                 <ul className="mt-4 space-y-4 text-sm leading-7 text-slate-700">
+                  <li>What exit value actually clears 1x, 3x, or return-the-fund economics at this entry price?</li>
                   <li>How likely is a founder to fall below 20% ownership before the exit window opens?</li>
-                  <li>When does an employee grant become underwater even if the company keeps raising?</li>
-                  <li>Does the investor need a rare 25x outcome to justify the initial price?</li>
+                  <li>When do conversion terms or preferences reshape the payout waterfall?</li>
                 </ul>
               </div>
               <div className="rounded-panel border border-amber-200 bg-amber-50 p-5">
-                <p className="font-heading text-xl font-semibold">What v1 models</p>
+                <p className="font-heading text-xl font-semibold">What this build exposes</p>
                 <p className="mt-3 text-sm leading-6 text-slate-700">
-                  Post-money SAFEs, capped notes, standard preferred, option-pool refreshes, down-round pressure, and
-                  partial secondary liquidity. The math stays rigorous but explainable.
+                  A deterministic deal calculator, a Monte Carlo risk engine, and a cap-table waterfall lab. Post-money
+                  SAFEs, capped notes, standard preferred, option-pool refreshes, and partial secondary liquidity stay
+                  rigorous but explainable.
                 </p>
               </div>
             </div>

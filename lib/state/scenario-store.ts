@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { getScenarioPreset, scenarioPresets } from "@/data/presets";
+import { withNormalizedFounders } from "@/lib/founders";
 import { scenarioFileSchema, ScenarioConfig, ScenarioFileV1 } from "@/lib/sim/types";
 
 export interface SavedScenario {
@@ -32,13 +33,13 @@ const defaultActive = getScenarioPreset("nvca_standard");
 const defaultComparison = getScenarioPreset("stress_case");
 
 function withControls(config: ScenarioConfig): ScenarioConfig {
-  return {
+  return withNormalizedFounders({
     ...config,
     controls: config.controls ?? {
       iterations: 10_000,
       seed: 42,
     },
-  };
+  });
 }
 
 export const useScenarioStore = create<ScenarioStore>()(

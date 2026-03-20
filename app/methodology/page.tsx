@@ -8,10 +8,11 @@ export default function MethodologyPage() {
       <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Methodology</p>
-          <h1 className="mt-3 font-heading text-5xl font-semibold tracking-tight">How the simulator thinks</h1>
+          <h1 className="mt-3 font-heading text-5xl font-semibold tracking-tight">How the engines think</h1>
           <p className="mt-5 text-lg leading-8 text-slate-600">
-            Venture Math Lab is built for standard-friendly venture documents. It is intentionally more rigorous than a
-            toy calculator, and intentionally simpler than bespoke legal modeling.
+            Venture Math Lab is built around a deterministic finance engine, a Monte Carlo engine, and a cap-table plus
+            waterfall engine. It is intentionally more rigorous than a toy calculator, and intentionally simpler than
+            bespoke legal modeling.
           </p>
         </div>
 
