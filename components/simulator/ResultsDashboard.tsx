@@ -17,9 +17,11 @@ function MetricCard({
   caption: string;
 }) {
   return (
-    <Card className="p-5">
+    <Card className="min-w-0 overflow-hidden p-5">
       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-3 font-heading text-3xl font-semibold text-foreground">{value}</p>
+      <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight text-foreground [overflow-wrap:anywhere]">
+        {value}
+      </p>
       <p className="mt-2 text-sm leading-6 text-slate-600">{caption}</p>
     </Card>
   );
@@ -28,7 +30,7 @@ function MetricCard({
 export function ResultsDashboard({ summary }: { summary: SimulationSummary }) {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         <MetricCard
           label={`Founder ${summary.founder.riskBand}`}
           value={formatCurrency(summary.founder.median)}

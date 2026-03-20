@@ -136,25 +136,33 @@ export function FundConstructionWorkspace() {
         </Card>
 
         <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Card className="p-5">
+          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Investable capital</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{formatCurrency(summary.investableCapital)}</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {formatCurrency(summary.investableCapital)}
+              </p>
               <p className="mt-2 text-sm text-slate-600">After fee drag over a 10-year fund life</p>
             </Card>
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Modeled companies</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{summary.modeledCompanyCount}</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {summary.modeledCompanyCount}
+              </p>
               <p className="mt-2 text-sm text-slate-600">Supported by the initial deployment budget</p>
             </Card>
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Median net TVPI</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{formatMultiple(summary.netTVPIMedian)}</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {formatMultiple(summary.netTVPIMedian)}
+              </p>
               <p className="mt-2 text-sm text-slate-600">Net of modeled carry but before taxes at the LP level</p>
             </Card>
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Median net IRR</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{formatPercent(summary.netIrrMedian)}</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {formatPercent(summary.netIrrMedian)}
+              </p>
               <p className="mt-2 text-sm text-slate-600">Approximate, based on simulated exit timing</p>
             </Card>
           </div>

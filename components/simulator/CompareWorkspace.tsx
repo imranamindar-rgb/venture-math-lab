@@ -35,9 +35,11 @@ function ComparisonColumn({
   detail: string;
 }) {
   return (
-    <Card className="h-full">
+    <Card className="h-full min-w-0 overflow-hidden">
       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{title}</p>
-      <p className="mt-3 font-heading text-3xl font-semibold">{value}</p>
+      <p className="mt-3 min-w-0 font-heading text-[clamp(1.45rem,1.9vw,2.25rem)] font-semibold leading-[0.94] tracking-tight [overflow-wrap:anywhere]">
+        {value}
+      </p>
       <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
       <p className="mt-4 text-xs uppercase tracking-[0.18em] text-slate-500">{detail}</p>
     </Card>
@@ -158,7 +160,7 @@ export function CompareWorkspace() {
 
       {baseline && stress ? (
         <div className="mt-8 space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
             {comparePayload?.headlineCards.map((card) => (
               <ComparisonColumn
                 key={card.label}

@@ -33,30 +33,40 @@ export function OperatorWorkspace() {
             </p>
           </Card>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Card className="p-5">
+          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Runway</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{summary.runwayMonths.toFixed(1)} months</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {summary.runwayMonths.toFixed(1)} months
+              </p>
               <p className="mt-2 text-sm text-slate-600">{summary.runwayBand} coverage versus the next benchmark financing step</p>
             </Card>
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Post-close runway</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{summary.postRaiseRunwayMonths.toFixed(1)} months</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {summary.postRaiseRunwayMonths.toFixed(1)} months
+              </p>
               <p className="mt-2 text-sm text-slate-600">Runway if the modeled financing closes net of transaction fees</p>
             </Card>
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Financing gap</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{formatCurrency(summary.financingGap)}</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {formatCurrency(summary.financingGap)}
+              </p>
               <p className="mt-2 text-sm text-slate-600">Cash shortfall to simply reach the next benchmark round</p>
             </Card>
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Buffered gap</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{formatCurrency(summary.bufferGap)}</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {formatCurrency(summary.bufferGap)}
+              </p>
               <p className="mt-2 text-sm text-slate-600">Shortfall including the target post-round safety buffer</p>
             </Card>
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Burn multiple</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{formatMultiple(summary.burnMultiple)}</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {formatMultiple(summary.burnMultiple)}
+              </p>
               <p className="mt-2 text-sm text-slate-600">Annualized burn divided by projected ARR growth over the next year</p>
             </Card>
           </div>
@@ -143,19 +153,25 @@ export function OperatorWorkspace() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Working capital</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{formatCurrency(summary.workingCapital)}</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {formatCurrency(summary.workingCapital)}
+              </p>
               <p className="mt-2 text-sm text-slate-600">Current assets minus current liabilities in the simplified bridge</p>
             </Card>
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Quick ratio</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{summary.quickRatio.toFixed(2)}x</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {summary.quickRatio.toFixed(2)}x
+              </p>
               <p className="mt-2 text-sm text-slate-600">Liquid assets versus short-term obligations</p>
             </Card>
-            <Card className="p-5">
+            <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Net financing proceeds</p>
-              <p className="mt-3 font-heading text-3xl font-semibold">{formatCurrency(summary.netFinancingProceeds)}</p>
+              <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+                {formatCurrency(summary.netFinancingProceeds)}
+              </p>
               <p className="mt-2 text-sm text-slate-600">{summary.financingClassification} net of modeled transaction fees</p>
             </Card>
           </div>
