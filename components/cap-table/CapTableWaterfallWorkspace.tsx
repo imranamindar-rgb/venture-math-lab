@@ -59,11 +59,11 @@ function WaterfallCard({
   scenarios: ReturnType<typeof summarizeCapTableWaterfall>["currentWaterfalls"];
 }) {
   return (
-    <Card>
+    <Card className="min-w-0 overflow-hidden">
       <h3 className="font-heading text-lg font-semibold">{title}</h3>
       <div className="mt-4 space-y-3">
         {scenarios.map((scenario) => (
-          <div key={scenario.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div key={scenario.label} className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold text-slate-900">{scenario.label}</p>
@@ -73,58 +73,72 @@ function WaterfallCard({
                 {scenario.preferredStructure}
               </div>
             </div>
-            <dl className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-2xl bg-white px-3 py-3">
+            <dl className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Founder</dt>
-                <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.founderProceeds)}</dd>
+                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                  {formatCurrency(scenario.founderProceeds)}
+                </dd>
               </div>
-              <div className="rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Employee</dt>
-                <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.employeeProceeds)}</dd>
+                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                  {formatCurrency(scenario.employeeProceeds)}
+                </dd>
               </div>
-              <div className="rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Modeled investor</dt>
-                <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.investorProceeds)}</dd>
+                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                  {formatCurrency(scenario.investorProceeds)}
+                </dd>
               </div>
-              <div className="rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Prior preferred</dt>
-                <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.priorInvestorProceeds)}</dd>
+                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                  {formatCurrency(scenario.priorInvestorProceeds)}
+                </dd>
               </div>
-              <div className="rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Note payout</dt>
-                <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.noteProceeds)}</dd>
+                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                  {formatCurrency(scenario.noteProceeds)}
+                </dd>
               </div>
-              <div className="rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">SAFE payout</dt>
-                <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.safeProceeds)}</dd>
+                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                  {formatCurrency(scenario.safeProceeds)}
+                </dd>
               </div>
             </dl>
             {scenario.founderBreakdown.length > 1 ? (
-              <div className="mt-4 rounded-2xl bg-white px-3 py-3">
+              <div className="mt-4 min-w-0 rounded-2xl bg-white px-3 py-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Founder split</p>
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
                   {scenario.founderBreakdown.map((founder) => (
-                    <li key={founder.id} className="flex items-center justify-between">
-                      <span>{founder.name}</span>
-                      <span className="font-semibold text-slate-900">{formatCurrency(founder.proceeds)}</span>
+                    <li key={founder.id} className="flex items-center justify-between gap-4">
+                      <span className="min-w-0">{founder.name}</span>
+                      <span className="shrink-0 text-right font-semibold text-slate-900">
+                        {formatCurrency(founder.proceeds)}
+                      </span>
                     </li>
                   ))}
                 </ul>
               </div>
             ) : null}
             {scenario.seriesBreakdown.length > 0 ? (
-              <div className="mt-4 rounded-2xl bg-white px-3 py-3">
+              <div className="mt-4 min-w-0 rounded-2xl bg-white px-3 py-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Preferred series</p>
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
                   {scenario.seriesBreakdown.map((series) => (
                     <li key={series.id} className="flex items-start justify-between gap-4">
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-semibold text-slate-900">{series.label}</p>
                         <p className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">
                           {series.structure} / seniority {series.seniority}
                         </p>
                       </div>
-                      <span className="font-semibold text-slate-900">{formatCurrency(series.payout)}</span>
+                      <span className="shrink-0 text-right font-semibold text-slate-900">{formatCurrency(series.payout)}</span>
                     </li>
                   ))}
                 </ul>
@@ -143,7 +157,7 @@ export function CapTableWaterfallWorkspace() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 xl:grid-cols-[0.95fr,1.35fr]">
+      <div className="grid gap-6 2xl:grid-cols-[0.95fr,1.35fr]">
         <ActiveScenarioPanel
           modeLabel="Cap table and waterfall engine"
           title="Cap Table Lab"
@@ -162,7 +176,7 @@ export function CapTableWaterfallWorkspace() {
             </p>
           </Card>
 
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4 2xl:grid-cols-2">
             <PositionTable title="Current cap table" rows={summary.currentRows} totalShares={summary.fullyDilutedShares} />
             <PositionTable
               title="As-converted preview"
@@ -171,7 +185,7 @@ export function CapTableWaterfallWorkspace() {
             />
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4 2xl:grid-cols-2">
             <WaterfallCard title="Current stack exit scenarios" scenarios={summary.currentWaterfalls} />
             <WaterfallCard title="As-converted exit scenarios" scenarios={summary.convertedWaterfalls} />
           </div>
