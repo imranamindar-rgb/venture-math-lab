@@ -12,6 +12,26 @@ import { OwnershipChart } from "@/components/charts/OwnershipChart";
 import { ProbabilityChart } from "@/components/charts/ProbabilityChart";
 import { formatCurrency, formatMultiple, formatPercent } from "@/lib/format";
 
+function MetricCard({
+  label,
+  value,
+  caption,
+}: {
+  label: string;
+  value: string;
+  caption: string;
+}) {
+  return (
+    <Card className="min-w-0 overflow-hidden p-5">
+      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
+        {value}
+      </p>
+      <p className="mt-2 text-sm text-slate-600">{caption}</p>
+    </Card>
+  );
+}
+
 function buildOwnershipSeries(): OwnershipPoint[] {
   return stageOrder.map((stage) => {
     const preset = stagePresets[stage];
@@ -72,7 +92,7 @@ export function FundamentalsDashboardWorkspace() {
         </Button>
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[0.95fr,1.35fr]">
+      <div className="mt-8 grid gap-6 2xl:grid-cols-[0.95fr,1.35fr]">
         <Card>
           <h2 className="font-heading text-xl font-semibold">Live teaching controls</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
@@ -143,26 +163,26 @@ export function FundamentalsDashboardWorkspace() {
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Benchmark pre-money</p>
-            <p className="mt-3 font-heading text-3xl font-semibold">{formatCurrency(preset.preMoney)}</p>
-            <p className="mt-2 text-sm text-slate-600">{preset.label} market median</p>
-          </Card>
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Post-money</p>
-            <p className="mt-3 font-heading text-3xl font-semibold">{formatCurrency(postMoney)}</p>
-            <p className="mt-2 text-sm text-slate-600">Pre-money plus check size</p>
-          </Card>
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Immediate ownership</p>
-            <p className="mt-3 font-heading text-3xl font-semibold">{formatPercent(ownership)}</p>
-            <p className="mt-2 text-sm text-slate-600">Priced-round ownership before later dilution</p>
-          </Card>
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">3x IRR example</p>
-            <p className="mt-3 font-heading text-3xl font-semibold">{formatPercent(impliedIrr)}</p>
-            <p className="mt-2 text-sm text-slate-600">Annualized IRR if 3x happens in {yearsToExit} years</p>
-          </Card>
+          <MetricCard
+            label="Benchmark pre-money"
+            value={formatCurrency(preset.preMoney)}
+            caption={`${preset.label} market median`}
+          />
+          <MetricCard
+            label="Post-money"
+            value={formatCurrency(postMoney)}
+            caption="Pre-money plus check size"
+          />
+          <MetricCard
+            label="Immediate ownership"
+            value={formatPercent(ownership)}
+            caption="Priced-round ownership before later dilution"
+          />
+          <MetricCard
+            label="3x IRR example"
+            value={formatPercent(impliedIrr)}
+            caption={`Annualized IRR if 3x happens in ${yearsToExit} years`}
+          />
         </div>
       </div>
 
