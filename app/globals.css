@@ -53,3 +53,13 @@ button {
 ::selection {
   background: rgba(180, 83, 9, 0.18);
 }
+
+@media print {
+  body {
+    background: white;
+  }
+
+  header {
+    display: none;
+  }
+}

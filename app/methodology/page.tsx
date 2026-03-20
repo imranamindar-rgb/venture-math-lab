@@ -17,6 +17,17 @@ export default function MethodologyPage() {
         </div>
 
         <div className="mt-10 space-y-5">
+          <Card>
+            <h2 className="font-heading text-2xl font-semibold">Support tags</h2>
+            <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
+              <p>
+                Every scenario is labeled as <strong>standard</strong>, <strong>approximate</strong>, or <strong>unsupported</strong>.
+              </p>
+              <p>
+                Standard means the scenario stays within the app&apos;s clean venture-math coverage. Approximate means the app is using forward estimates or simplified mechanics. Unsupported means the setup conflicts with the modeled instrument or falls outside the app&apos;s usable assumptions.
+              </p>
+            </div>
+          </Card>
           {methodologySections.map((section) => (
             <Card key={section.title}>
               <h2 className="font-heading text-2xl font-semibold">{section.title}</h2>

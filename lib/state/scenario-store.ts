@@ -35,6 +35,24 @@ const defaultComparison = getScenarioPreset("stress_case");
 function withControls(config: ScenarioConfig): ScenarioConfig {
   return withNormalizedFounders({
     ...config,
+    preferred: config.preferred ?? {
+      participationMode: "non_participating",
+      liquidationMultiple: 1,
+      antiDilutionMode: "none",
+    },
+    operating: config.operating ?? {
+      cashOnHand: 6_000_000,
+      monthlyBurn: 300_000,
+      monthlyRevenue: 120_000,
+      monthlyRevenueGrowth: 0.08,
+      grossMargin: 0.78,
+      targetCashBufferMonths: 6,
+      accountsReceivable: 120_000,
+      inventory: 0,
+      accountsPayable: 90_000,
+      capexMonthly: 15_000,
+      transactionFees: 150_000,
+    },
     controls: config.controls ?? {
       iterations: 10_000,
       seed: 42,

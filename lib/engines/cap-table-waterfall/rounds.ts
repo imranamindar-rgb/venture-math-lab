@@ -1,22 +1,59 @@
 import { stagePresets, marketOverlayMultipliers, sectorOverlayMultipliers } from "@/data/presets";
+import { getCurrentFinancing } from "@/lib/current-financing";
 import { CapTableSnapshot, FundingStage, RoundTrend, ScenarioConfig } from "@/lib/sim/types";
 import {
+  addPreferredSeries,
   getFullyDilutedShares,
   getInvestorOwnership,
+  getNextPreferredSeniority,
   topUpOptionPool,
 } from "@/lib/engines/cap-table-waterfall/cap-table";
 import { clamp, pickWeighted, randomBetween, RandomSource } from "@/lib/sim/rng";
 
+function applyAntiDilution(
+  snapshot: CapTableSnapshot,
+  preRoundShares: number,
+  pricePerShare: number,
+  issuedShares: number,
+  roundSize: number,
+) {
+  let applied = false;
+  let addedShares = 0;
+  const affectedSeries: string[] = [];
+
+  for (const series of snapshot.preferredSeries) {
+    const oldPrice = series.referencePricePerShare;
+    if (series.antiDilutionMode === "none" || oldPrice <= 0 || pricePerShare >= oldPrice || series.shares <= 0) {
+      continue;
+    }
+
+    let newConversionPrice = oldPrice;
+    if (series.antiDilutionMode === "full_ratchet") {
+      newConversionPrice = pricePerShare;
+    } else {
+      const numerator = preRoundShares + roundSize / oldPrice;
+      const denominator = preRoundShares + issuedShares;
+      newConversionPrice = denominator > 0 ? oldPrice * (numerator / denominator) : oldPrice;
+    }
+
+    const ratioLift = newConversionPrice > 0 ? oldPrice / newConversionPrice : 1;
+    const extraShares = Math.max(0, series.shares * (ratioLift - 1));
+    if (extraShares <= 0) {
+      continue;
+    }
+
+    series.shares += extraShares;
+    series.referencePricePerShare = newConversionPrice;
+    applied = true;
+    addedShares += extraShares;
+    affectedSeries.push(series.label);
+  }
+
+  return { applied, addedShares, affectedSeries };
+}
+
 export function getReferencePostMoney(config: ScenarioConfig) {
-  if (config.currentRoundKind === "safe_post_money") {
-    return config.safe.postMoneyCap;
-  }
-
-  if (config.currentRoundKind === "convertible_note_cap") {
-    return config.note.preMoneyCap + config.note.principal;
-  }
-
-  return config.currentPreMoney + config.investor.initialCheck;
+  return getCurrentFinancing(config).referencePostMoney;
 }
 
 export function projectMedianRound(stage: FundingStage, currentPostMoney: number, config: ScenarioConfig) {
@@ -87,35 +124,68 @@ export function issuePreferredRound(
   preMoney: number,
   roundSize: number,
   config: ScenarioConfig,
+  seriesLabel = "New preferred round",
 ) {
+  const financing = getCurrentFinancing(config);
   const preRoundShares = getFullyDilutedShares(snapshot);
   const pricePerShare = preMoney / preRoundShares;
   const issuedShares = roundSize / pricePerShare;
+  const antiDilution = applyAntiDilution(snapshot, preRoundShares, pricePerShare, issuedShares, roundSize);
 
   const investorExistingPct = getInvestorOwnership(snapshot);
   const targetFollowOnShares = config.investor.proRata ? issuedShares * investorExistingPct : 0;
   const targetFollowOnCash = targetFollowOnShares * pricePerShare;
-  const reserveCap = config.investor.initialCheck * config.investor.reserveMultiple;
+  const reserveCap = financing.modeledInvestorCheck * config.investor.reserveMultiple;
   const reserveRemaining = Math.max(
     0,
-    reserveCap - Math.max(0, snapshot.modeledInvestorInvested - config.investor.initialCheck),
+    reserveCap - Math.max(0, snapshot.modeledInvestorInvested - financing.modeledInvestorCheck),
   );
 
   const actualFollowOnCash = Math.min(targetFollowOnCash, reserveRemaining);
   const actualFollowOnShares = actualFollowOnCash / pricePerShare;
+  const seniority = getNextPreferredSeniority(snapshot);
 
-  snapshot.modeledInvestorPreferred += actualFollowOnShares;
-  snapshot.modeledInvestorLiquidationPref += actualFollowOnCash;
-  snapshot.modeledInvestorInvested += actualFollowOnCash;
+  if (actualFollowOnShares > 0) {
+    addPreferredSeries(snapshot, {
+      id: `${seriesLabel}-modeled-${snapshot.preferredSeries.length + 1}`,
+      label: `${seriesLabel} modeled follow-on`,
+      ownerGroup: "modeled",
+      shares: actualFollowOnShares,
+      liquidationPreference: actualFollowOnCash,
+      participationMode: config.preferred.participationMode,
+      liquidationMultiple: config.preferred.liquidationMultiple,
+      antiDilutionMode: config.preferred.antiDilutionMode,
+      seniority,
+      referencePricePerShare: pricePerShare,
+    });
+    snapshot.modeledInvestorInvested += actualFollowOnCash;
+  }
 
-  snapshot.priorInvestorPreferred += issuedShares - actualFollowOnShares;
-  snapshot.priorInvestorLiquidationPref += roundSize - actualFollowOnCash;
+  const syndicateShares = issuedShares - actualFollowOnShares;
+  const syndicateCash = roundSize - actualFollowOnCash;
+  if (syndicateShares > 0) {
+    addPreferredSeries(snapshot, {
+      id: `${seriesLabel}-prior-${snapshot.preferredSeries.length + 1}`,
+      label: `${seriesLabel} syndicate`,
+      ownerGroup: "prior",
+      shares: syndicateShares,
+      liquidationPreference: syndicateCash,
+      participationMode: config.preferred.participationMode,
+      liquidationMultiple: config.preferred.liquidationMultiple,
+      antiDilutionMode: config.preferred.antiDilutionMode,
+      seniority,
+      referencePricePerShare: pricePerShare,
+    });
+  }
 
   return {
     pricePerShare,
     issuedShares,
     followOnCash: actualFollowOnCash,
     followOnShares: actualFollowOnShares,
+    antiDilutionApplied: antiDilution.applied,
+    antiDilutionShares: antiDilution.addedShares,
+    antiDilutionSeries: antiDilution.affectedSeries,
   };
 }
 

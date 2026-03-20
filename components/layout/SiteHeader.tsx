@@ -16,6 +16,9 @@ export function SiteHeader() {
           </div>
         </Link>
         <nav className="flex items-center gap-5 text-sm text-slate-600">
+          <Link href="/dashboard" className="hover:text-slate-950">
+            Dashboard
+          </Link>
           <Link href="/calculator" className="hover:text-slate-950">
             Calculator
           </Link>
@@ -25,8 +28,17 @@ export function SiteHeader() {
           <Link href="/cap-table" className="hover:text-slate-950">
             Cap Table
           </Link>
+          <Link href="/fund" className="hover:text-slate-950">
+            Fund Lab
+          </Link>
+          <Link href="/operator" className="hover:text-slate-950">
+            Operator
+          </Link>
           <Link href="/compare" className="hover:text-slate-950">
             Compare
+          </Link>
+          <Link href="/report" className="hover:text-slate-950">
+            Report
           </Link>
           <Link href="/methodology" className="hover:text-slate-950">
             Methodology

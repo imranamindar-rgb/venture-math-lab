@@ -80,8 +80,8 @@ export function ResultsDashboard({ summary }: { summary: SimulationSummary }) {
               <dd className="font-semibold">{formatPercent(summary.employee.underwaterProbability)}</dd>
             </div>
             <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
-              <dt>Exercise coverage median</dt>
-              <dd className="font-semibold">{formatPercent(summary.employee.exerciseCoverageMedian)}</dd>
+              <dt>Gross value / exercise cost median</dt>
+              <dd className="font-semibold">{formatMultiple(summary.employee.exerciseCoverageMedian)}</dd>
             </div>
           </dl>
         </Card>

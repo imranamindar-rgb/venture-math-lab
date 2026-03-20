@@ -6,6 +6,13 @@ export type FundingStage = (typeof stageOrder)[number];
 export const roundKinds = ["safe_post_money", "convertible_note_cap", "priced_preferred"] as const;
 export type RoundKind = (typeof roundKinds)[number];
 
+export const preferredParticipationModes = ["non_participating", "participating"] as const;
+export type PreferredParticipationMode = (typeof preferredParticipationModes)[number];
+export const antiDilutionModes = ["none", "broad_weighted_average", "full_ratchet"] as const;
+export type AntiDilutionMode = (typeof antiDilutionModes)[number];
+export const preferredOwnerGroups = ["prior", "modeled"] as const;
+export type PreferredOwnerGroup = (typeof preferredOwnerGroups)[number];
+
 export const liquidityKinds = ["shutdown", "acquisition", "secondary", "ipo"] as const;
 export type LiquidityEventKind = (typeof liquidityKinds)[number];
 
@@ -81,6 +88,39 @@ export interface EmployeeGrantConfig {
   strikePrice: number;
 }
 
+export interface PreferredTermsConfig {
+  participationMode: PreferredParticipationMode;
+  liquidationMultiple: number;
+  antiDilutionMode: AntiDilutionMode;
+}
+
+export interface PreferredSeriesSnapshot {
+  id: string;
+  label: string;
+  ownerGroup: PreferredOwnerGroup;
+  shares: number;
+  liquidationPreference: number;
+  participationMode: PreferredParticipationMode;
+  liquidationMultiple: number;
+  antiDilutionMode: AntiDilutionMode;
+  seniority: number;
+  referencePricePerShare: number;
+}
+
+export interface OperatingConfig {
+  cashOnHand: number;
+  monthlyBurn: number;
+  monthlyRevenue: number;
+  monthlyRevenueGrowth: number;
+  grossMargin: number;
+  targetCashBufferMonths: number;
+  accountsReceivable: number;
+  inventory: number;
+  accountsPayable: number;
+  capexMonthly: number;
+  transactionFees: number;
+}
+
 export interface SecondaryConfig {
   enabled: boolean;
   founderSaleFraction: number;
@@ -109,6 +149,8 @@ export interface ScenarioConfig {
   note: ConvertibleNoteConfig;
   investor: InvestorConfig;
   employee: EmployeeGrantConfig;
+  preferred: PreferredTermsConfig;
+  operating: OperatingConfig;
   secondary: SecondaryConfig;
   controls: SimulationControls;
   warningFlags: string[];
@@ -118,12 +160,11 @@ export interface CapTableSnapshot {
   founderCommon: number;
   employeeCommon: number;
   employeePool: number;
-  priorInvestorPreferred: number;
-  modeledInvestorPreferred: number;
+  preferredSeries: PreferredSeriesSnapshot[];
   secondaryCommon: number;
-  priorInvestorLiquidationPref: number;
-  modeledInvestorLiquidationPref: number;
   modeledInvestorInvested: number;
+  safeOutstanding: number;
+  safePostMoneyCap: number;
   noteOutstanding: number;
   realizedFounderSecondary: number;
   realizedEmployeeSecondary: number;
@@ -149,21 +190,40 @@ export interface RoundOutcome {
   safeConverted: boolean;
   noteConverted: boolean;
   optionPoolRefreshed: boolean;
+  antiDilutionApplied: boolean;
+  antiDilutionMode: AntiDilutionMode;
+  antiDilutionShares: number;
   founderOwnership: number;
   employeeOwnership: number;
   investorOwnership: number;
 }
 
 export interface WaterfallPayouts {
+  seriesPayouts: Array<{
+    id: string;
+    label: string;
+    ownerGroup: PreferredOwnerGroup;
+    seniority: number;
+    shares: number;
+    liquidationPreference: number;
+    preferencePayout: number;
+    commonPayout: number;
+    totalPayout: number;
+    converted: boolean;
+    structure: string;
+  }>;
   notePayout: number;
+  safePayout: number;
   preferredPayout: number;
   commonPayout: number;
   founderPayout: number;
   employeeGrossPayout: number;
+  employeeNetPayout: number;
   investorPayout: number;
   priorInvestorPayout: number;
   secondaryCommonPayout: number;
   preferredConverted: boolean;
+  preferredStructure: string;
 }
 
 export interface LiquidityOutcome {
@@ -175,7 +235,10 @@ export interface LiquidityOutcome {
   preferredConverted: boolean;
   founderNetProceeds: number;
   employeeNetProceeds: number;
+  employeeGrossValue: number;
+  employeeExerciseCost: number;
   investorProceeds: number;
+  priorInvestorProceeds: number;
   investorMoic: number;
   investorIrr: number;
   waterfall: WaterfallPayouts;
@@ -301,6 +364,46 @@ export const scenarioConfigSchema = z.object({
     vestedFraction: z.number().min(0).max(1),
     strikePrice: z.number().nonnegative(),
   }),
+  preferred: z
+    .object({
+      participationMode: z.enum(preferredParticipationModes),
+      liquidationMultiple: z.number().min(1).max(3),
+      antiDilutionMode: z.enum(antiDilutionModes),
+    })
+    .optional()
+    .default({
+      participationMode: "non_participating",
+      liquidationMultiple: 1,
+      antiDilutionMode: "none",
+    }),
+  operating: z
+    .object({
+      cashOnHand: z.number().nonnegative(),
+      monthlyBurn: z.number().nonnegative(),
+      monthlyRevenue: z.number().nonnegative(),
+      monthlyRevenueGrowth: z.number().min(0).max(0.5),
+      grossMargin: z.number().min(0).max(1),
+      targetCashBufferMonths: z.number().min(0).max(24),
+      accountsReceivable: z.number().nonnegative(),
+      inventory: z.number().nonnegative(),
+      accountsPayable: z.number().nonnegative(),
+      capexMonthly: z.number().nonnegative(),
+      transactionFees: z.number().min(0).max(1_000_000),
+    })
+    .optional()
+    .default({
+      cashOnHand: 6_000_000,
+      monthlyBurn: 300_000,
+      monthlyRevenue: 120_000,
+      monthlyRevenueGrowth: 0.08,
+      grossMargin: 0.78,
+      targetCashBufferMonths: 6,
+      accountsReceivable: 120_000,
+      inventory: 0,
+      accountsPayable: 90_000,
+      capexMonthly: 15_000,
+      transactionFees: 150_000,
+    }),
   secondary: z.object({
     enabled: z.boolean(),
     founderSaleFraction: z.number().min(0).max(0.5),

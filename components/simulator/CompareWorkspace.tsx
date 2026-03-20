@@ -6,7 +6,22 @@ import { presetOptions, useScenarioStore } from "@/lib/state/scenario-store";
 import { useSimulationRunner } from "@/components/simulator/useSimulationRunner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { formatCurrency, formatPercent, formatMultiple } from "@/lib/format";
+import { SupportBadge } from "@/components/ui/SupportBadge";
+import { analyzeScenario } from "@/lib/scenario-diagnostics";
+import { getCurrentFinancing } from "@/lib/current-financing";
+import { buildComparisonCsv, buildComparisonMarkdown } from "@/lib/export";
+import { formatCurrency } from "@/lib/format";
+import { buildComparisonPayload } from "@/lib/reporting";
+
+function downloadText(filename: string, payload: string, type: string) {
+  const blob = new Blob([payload], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 function ComparisonColumn({
   title,
@@ -34,6 +49,12 @@ export function CompareWorkspace() {
   const { run: runActive, summary: baseline } = useSimulationRunner();
   const { run: runComparison, summary: stress } = useSimulationRunner();
   const lastAutoRunKey = useRef<string | null>(null);
+  const baselineDiagnostics = analyzeScenario(active);
+  const comparisonDiagnostics = analyzeScenario(comparison);
+  const baselineFinancing = getCurrentFinancing(active);
+  const comparisonFinancing = getCurrentFinancing(comparison);
+  const comparePayload =
+    baseline && stress ? buildComparisonPayload(active, comparison, baseline, stress) : null;
 
   useEffect(() => {
     const runKey = `${active.id}:${comparison.id}`;
@@ -66,11 +87,42 @@ export function CompareWorkspace() {
         >
           Refresh both runs
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() =>
+            baseline && stress
+              ? downloadText(
+                  `${active.id}-vs-${comparison.id}.csv`,
+                  buildComparisonCsv(active, comparison, baseline, stress),
+                  "text/csv;charset=utf-8",
+                )
+              : undefined
+          }
+        >
+          Export Compare CSV
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() =>
+            baseline && stress
+              ? downloadText(
+                  `${active.id}-vs-${comparison.id}.md`,
+                  buildComparisonMarkdown(active, comparison, baseline, stress),
+                  "text/markdown;charset=utf-8",
+                )
+              : undefined
+          }
+        >
+          Export Compare Memo
+        </Button>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Baseline</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Baseline</p>
+            <SupportBadge level={baselineDiagnostics.supportLevel} />
+          </div>
           <select
             value={active.id}
             onChange={(event) => setActivePreset(event.target.value)}
@@ -85,7 +137,10 @@ export function CompareWorkspace() {
           <p className="mt-3 text-sm text-slate-600">{active.description}</p>
         </Card>
         <Card>
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Comparison</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Comparison</p>
+            <SupportBadge level={comparisonDiagnostics.supportLevel} />
+          </div>
           <select
             value={comparison.id}
             onChange={(event) => setComparisonPreset(event.target.value)}
@@ -103,59 +158,94 @@ export function CompareWorkspace() {
 
       {baseline && stress ? (
         <div className="mt-8 space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <ComparisonColumn
-              title="Founder median"
-              value={`${formatCurrency(baseline.founder.median)} vs ${formatCurrency(stress.founder.median)}`}
-              description="Founder proceeds are usually the first place fragile step-up math shows up."
-              detail={`Delta ${formatCurrency(baseline.founder.median - stress.founder.median)}`}
-            />
-            <ComparisonColumn
-              title="Employee underwater risk"
-              value={`${formatPercent(baseline.employee.underwaterProbability)} vs ${formatPercent(
-                stress.employee.underwaterProbability,
-              )}`}
-              description="This shows how quickly employees lose practical equity value when strike price and dilution drift apart."
-              detail={`Delta ${formatPercent(
-                stress.employee.underwaterProbability - baseline.employee.underwaterProbability,
-              )}`}
-            />
-            <ComparisonColumn
-              title="Investor power-law spread"
-              value={`${formatMultiple(baseline.meanVsMedianSpread)} vs ${formatMultiple(
-                stress.meanVsMedianSpread,
-              )}`}
-              description="A wide spread means the economics rely on rare outliers rather than typical venture outcomes."
-              detail={`Return-the-fund ${formatPercent(baseline.investor.returnTheFundProbability)} vs ${formatPercent(
-                stress.investor.returnTheFundProbability,
-              )}`}
-            />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {comparePayload?.headlineCards.map((card) => (
+              <ComparisonColumn
+                key={card.label}
+                title={card.label}
+                value={`${card.baseline} vs ${card.comparison}`}
+                description={card.interpretation}
+                detail={`Delta ${card.delta}`}
+              />
+            ))}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <h2 className="font-heading text-xl font-semibold">Baseline pressure points</h2>
+              <h2 className="font-heading text-xl font-semibold">Assumption shifts</h2>
               <ul className="mt-4 space-y-3 text-sm text-slate-700">
-                {baseline.riskLayers.map((metric) => (
-                  <li key={metric.label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
-                    <span>{metric.label}</span>
-                    <span className="font-semibold">{formatPercent(metric.probability)}</span>
+                <li className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
+                  <span>Round type</span>
+                  <span className="font-semibold">
+                    {active.currentRoundKind.replaceAll("_", " ")} vs {comparison.currentRoundKind.replaceAll("_", " ")}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
+                  <span>Current raise</span>
+                  <span className="font-semibold">
+                    {formatCurrency(baselineFinancing.totalRoundRaise)} vs {formatCurrency(comparisonFinancing.totalRoundRaise)}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
+                  <span>Investor at risk</span>
+                  <span className="font-semibold">
+                    {formatCurrency(baselineFinancing.modeledInvestorCheck)} vs {formatCurrency(comparisonFinancing.modeledInvestorCheck)}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
+                  <span>Market / sector</span>
+                  <span className="font-semibold">
+                    {active.marketOverlay}/{active.sectorOverlay} vs {comparison.marketOverlay}/{comparison.sectorOverlay}
+                  </span>
+                </li>
+              </ul>
+            </Card>
+            <Card>
+              <h2 className="font-heading text-xl font-semibold">Driver deltas</h2>
+              <ul className="mt-4 space-y-3 text-sm text-slate-700">
+                {comparePayload?.driverCards.map((card) => (
+                  <li key={card.label} className="rounded-2xl bg-slate-50 px-3 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-slate-900">{card.label}</span>
+                      <span className="font-semibold text-slate-900">{card.delta}</span>
+                    </div>
+                    <p className="mt-2 text-xs uppercase tracking-[0.14em] text-slate-500">
+                      {card.baseline} vs {card.comparison}
+                    </p>
+                    <p className="mt-2 leading-6 text-slate-600">{card.interpretation}</p>
                   </li>
                 ))}
               </ul>
             </Card>
             <Card>
-              <h2 className="font-heading text-xl font-semibold">Stress-case pressure points</h2>
+              <h2 className="font-heading text-xl font-semibold">Risk-layer movement</h2>
               <ul className="mt-4 space-y-3 text-sm text-slate-700">
-                {stress.riskLayers.map((metric) => (
-                  <li key={metric.label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
-                    <span>{metric.label}</span>
-                    <span className="font-semibold">{formatPercent(metric.probability)}</span>
+                {comparePayload?.riskLayerCards.map((card) => (
+                  <li key={card.label} className="rounded-2xl bg-slate-50 px-3 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-slate-900">{card.label}</span>
+                      <span className="font-semibold text-slate-900">{card.delta}</span>
+                    </div>
+                    <p className="mt-2 text-xs uppercase tracking-[0.14em] text-slate-500">
+                      {card.baseline} vs {card.comparison}
+                    </p>
+                    <p className="mt-2 leading-6 text-slate-600">{card.interpretation}</p>
                   </li>
                 ))}
               </ul>
             </Card>
           </div>
+
+          <Card>
+            <h2 className="font-heading text-xl font-semibold">Board notes</h2>
+            <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
+              {comparePayload?.boardNotes.map((note) => (
+                <li key={note} className="rounded-2xl bg-slate-50 px-4 py-3">
+                  {note}
+                </li>
+              ))}
+            </ul>
+          </Card>
         </div>
       ) : null}
     </div>

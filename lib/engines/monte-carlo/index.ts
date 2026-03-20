@@ -36,6 +36,7 @@ import {
   ThresholdMetric,
   stageOrder,
 } from "@/lib/sim/types";
+import { getCurrentFinancing } from "@/lib/current-financing";
 
 function sampleTerminalExitMultiple(
   rng: ReturnType<typeof createRng>,
@@ -60,17 +61,18 @@ function sampleTerminalExitMultiple(
   };
 }
 
-function buildHistogram(values: number[], labels: string[]): HistogramBucket[] {
+function buildFixedHistogram(
+  values: number[],
+  ranges: { label: string; min: number; max: number }[],
+): HistogramBucket[] {
   if (values.length === 0) {
-    return labels.map((label) => ({ label, value: 0 }));
+    return ranges.map((range) => ({ label: range.label, value: 0 }));
   }
 
-  const max = Math.max(...values);
-  const bounds = labels.map((_, index) => (max / labels.length) * (index + 1));
-  const buckets = labels.map((label) => ({ label, value: 0 }));
+  const buckets = ranges.map((range) => ({ label: range.label, value: 0 }));
 
   for (const value of values) {
-    const idx = bounds.findIndex((bound) => value <= bound);
+    const idx = ranges.findIndex((range) => value >= range.min && value < range.max);
     buckets[idx === -1 ? buckets.length - 1 : idx].value += 1;
   }
 
@@ -131,6 +133,7 @@ function getEmployeeExerciseCost(config: ScenarioConfig, sharePrice: number) {
 
 function simulatePath(config: ScenarioConfig, iteration: number): PathOutcome {
   const rng = createRng(config.controls.seed + iteration);
+  const financing = getCurrentFinancing(config);
   const snapshot = createInitialCapTable(config);
   const ownershipPath: OwnershipPoint[] = [createOwnershipPoint("Current", snapshot)];
   const rounds = [];
@@ -142,7 +145,7 @@ function simulatePath(config: ScenarioConfig, iteration: number): PathOutcome {
   let safeConverted = config.currentRoundKind !== "safe_post_money";
   let noteConverted = config.currentRoundKind !== "convertible_note_cap";
   let secondaryUsed = false;
-  let reserveUsed = Math.max(0, snapshot.modeledInvestorInvested - config.investor.initialCheck);
+  let reserveUsed = Math.max(0, snapshot.modeledInvestorInvested - financing.modeledInvestorCheck);
   let exitCategory = "shutdown";
   let exitKind: "shutdown" | "acquisition" | "ipo" = "shutdown";
   let exitValue = 0;
@@ -173,7 +176,7 @@ function simulatePath(config: ScenarioConfig, iteration: number): PathOutcome {
     if (event === "exit") {
       const strong = rng.next() > 0.45;
       exitCategory = strong ? "strong acquisition" : "modest acquisition";
-      exitKind = strong ? "ipo" : "acquisition";
+      exitKind = "acquisition";
       exitValue =
         currentPostMoney *
         randomBetween(rng, strong ? 1.3 : 0.45, strong ? 7.5 : 1.4) *
@@ -182,19 +185,20 @@ function simulatePath(config: ScenarioConfig, iteration: number): PathOutcome {
       break;
     }
 
+    const nextRound = sampleNextRound(rng, nextStage, currentPostMoney, config, stepPenalty);
+    const optionPoolRefreshed = maybeRefreshPool(snapshot, config);
+
+    if (!noteConverted && config.note.enabled) {
+      const noteResult = maybeConvertNote(snapshot, config, nextRound.preMoney, monthsElapsed);
+      noteConverted = noteResult.converted;
+    }
+
     if (!safeConverted && config.safe.enabled) {
       const safeResult = maybeConvertSafe(snapshot, config);
       safeConverted = safeResult.converted;
     }
 
-    if (!noteConverted && config.note.enabled) {
-      const noteResult = maybeConvertNote(snapshot, config, currentPostMoney, monthsElapsed);
-      noteConverted = noteResult.converted;
-    }
-
-    const optionPoolRefreshed = maybeRefreshPool(snapshot, config);
-    const nextRound = sampleNextRound(rng, nextStage, currentPostMoney, config, stepPenalty);
-    const issued = issuePreferredRound(snapshot, nextRound.preMoney, nextRound.roundSize, config);
+    const issued = issuePreferredRound(snapshot, nextRound.preMoney, nextRound.roundSize, config, stagePreset.label);
     reserveUsed += issued.followOnCash;
 
     if (
@@ -222,6 +226,9 @@ function simulatePath(config: ScenarioConfig, iteration: number): PathOutcome {
       safeConverted,
       noteConverted,
       optionPoolRefreshed,
+      antiDilutionApplied: issued.antiDilutionApplied,
+      antiDilutionMode: config.preferred.antiDilutionMode,
+      antiDilutionShares: issued.antiDilutionShares,
       founderOwnership: getFounderOwnership(snapshot),
       employeeOwnership: getEmployeeOwnership(snapshot),
       investorOwnership: getInvestorOwnership(snapshot),
@@ -243,9 +250,9 @@ function simulatePath(config: ScenarioConfig, iteration: number): PathOutcome {
   const commonShares = snapshot.founderCommon + snapshot.employeeCommon + snapshot.secondaryCommon;
   const sharePrice = commonShares > 0 ? exitValue / commonShares : 0;
   const employeeExerciseCost = getEmployeeExerciseCost(config, sharePrice);
-  const waterfall = computeWaterfall(snapshot, exitValue, employeeExerciseCost);
+  const waterfall = computeWaterfall(snapshot, exitValue, employeeExerciseCost, config.preferred);
   const founderNet = waterfall.founderPayout + snapshot.realizedFounderSecondary;
-  const employeeNet = waterfall.employeeGrossPayout + snapshot.realizedEmployeeSecondary;
+  const employeeNet = waterfall.employeeNetPayout + snapshot.realizedEmployeeSecondary;
   const investorProceeds = waterfall.investorPayout;
   const investorMoic = snapshot.modeledInvestorInvested > 0 ? investorProceeds / snapshot.modeledInvestorInvested : 0;
   const yearsElapsed = Math.max(1 / 12, monthsElapsed / 12);
@@ -263,7 +270,10 @@ function simulatePath(config: ScenarioConfig, iteration: number): PathOutcome {
       preferredConverted: waterfall.preferredConverted,
       founderNetProceeds: founderNet,
       employeeNetProceeds: employeeNet,
+      employeeGrossValue: waterfall.employeeGrossPayout,
+      employeeExerciseCost,
       investorProceeds,
+      priorInvestorProceeds: waterfall.priorInvestorPayout,
       investorMoic,
       investorIrr,
       waterfall,
@@ -273,7 +283,7 @@ function simulatePath(config: ScenarioConfig, iteration: number): PathOutcome {
       below20: ownershipPath.some((point) => point.founderPct < 0.2),
       below10: ownershipPath.some((point) => point.founderPct < 0.1),
     },
-    employeeUnderwater: waterfall.employeeGrossPayout <= snapshot.realizedEmployeeSecondary,
+    employeeUnderwater: waterfall.employeeGrossPayout < employeeExerciseCost,
     exitCategory,
     reserveUsed,
   };
@@ -287,6 +297,7 @@ function toProbability(label: string, count: number, total: number): ThresholdMe
 }
 
 function buildSummary(config: ScenarioConfig, paths: PathOutcome[]): SimulationSummary {
+  const financing = getCurrentFinancing(config);
   const founderValues = paths.map((path) => path.liquidity.founderNetProceeds);
   const employeeValues = paths.map((path) => path.liquidity.employeeNetProceeds);
   const investorValues = paths.map((path) => path.liquidity.investorProceeds);
@@ -354,10 +365,9 @@ function buildSummary(config: ScenarioConfig, paths: PathOutcome[]): SimulationS
       worthlessProbability: paths.filter((path) => path.liquidity.employeeNetProceeds < 25_000).length / paths.length,
       exerciseCoverageMedian: median(
         paths.map((path) =>
-          path.liquidity.employeeNetProceeds <= 0
+          path.liquidity.employeeGrossValue <= 0
             ? 0
-            : path.liquidity.employeeNetProceeds /
-              Math.max(1, path.liquidity.waterfall.employeeGrossPayout || 1),
+            : path.liquidity.employeeGrossValue / Math.max(1, path.liquidity.employeeExerciseCost),
         ),
       ),
     },
@@ -376,14 +386,24 @@ function buildSummary(config: ScenarioConfig, paths: PathOutcome[]): SimulationS
     riskLayers,
     outcomeMix,
     ownershipSeries: averageOwnershipSeries(paths),
-    exitHistogram: buildHistogram(
-      founderValues,
-      ["0-$250k", "$250k-$1m", "$1m-$5m", "$5m-$20m", "$20m+"],
-    ),
-    investorHistogram: buildHistogram(investorMoics, ["0x", "0-1x", "1-3x", "3-10x", "10x+"]),
+    exitHistogram: buildFixedHistogram(founderValues, [
+      { label: "0-$250k", min: 0, max: 250_000 },
+      { label: "$250k-$1m", min: 250_000, max: 1_000_000 },
+      { label: "$1m-$5m", min: 1_000_000, max: 5_000_000 },
+      { label: "$5m-$20m", min: 5_000_000, max: 20_000_000 },
+      { label: "$20m+", min: 20_000_000, max: Number.POSITIVE_INFINITY },
+    ]),
+    investorHistogram: buildFixedHistogram(investorMoics, [
+      { label: "<1x", min: Number.NEGATIVE_INFINITY, max: 1 },
+      { label: "1x-3x", min: 1, max: 3 },
+      { label: "3x-10x", min: 3, max: 10 },
+      { label: "10x-25x", min: 10, max: 25 },
+      { label: "25x+", min: 25, max: Number.POSITIVE_INFINITY },
+    ]),
     warnings: [
+      ...financing.warnings,
       ...config.warningFlags,
-      "Monte Carlo uses standard-friendly preferred stock assumptions and does not model bespoke anti-dilution or warrant structures.",
+      "Monte Carlo now tracks preferred series by seniority, but it still does not model bespoke warrants, pay-to-play, or charter-specific carve-outs.",
       "Unused option pool shares dilute holders in financing math but do not receive exit proceeds.",
     ],
     pathsSample: paths.slice(0, 24),
@@ -404,6 +424,21 @@ export function sanitizeScenario(config: ScenarioConfig): ScenarioConfig {
   safeConfig.investor.reserveMultiple = clamp(config.investor.reserveMultiple, 0, 5);
   safeConfig.note.discountRate = clamp(config.note.discountRate, 0, 0.35);
   safeConfig.note.interestRate = clamp(config.note.interestRate, 0, 0.15);
+  safeConfig.preferred.liquidationMultiple = clamp(config.preferred.liquidationMultiple, 1, 3);
+  if (!["none", "broad_weighted_average", "full_ratchet"].includes(config.preferred.antiDilutionMode)) {
+    safeConfig.preferred.antiDilutionMode = "none";
+  }
+  safeConfig.operating.cashOnHand = Math.max(0, config.operating.cashOnHand);
+  safeConfig.operating.monthlyBurn = Math.max(0, config.operating.monthlyBurn);
+  safeConfig.operating.monthlyRevenue = Math.max(0, config.operating.monthlyRevenue);
+  safeConfig.operating.monthlyRevenueGrowth = clamp(config.operating.monthlyRevenueGrowth, 0, 0.25);
+  safeConfig.operating.grossMargin = clamp(config.operating.grossMargin, 0, 1);
+  safeConfig.operating.targetCashBufferMonths = clamp(config.operating.targetCashBufferMonths, 0, 24);
+  safeConfig.operating.accountsReceivable = Math.max(0, config.operating.accountsReceivable);
+  safeConfig.operating.inventory = Math.max(0, config.operating.inventory);
+  safeConfig.operating.accountsPayable = Math.max(0, config.operating.accountsPayable);
+  safeConfig.operating.capexMonthly = Math.max(0, config.operating.capexMonthly);
+  safeConfig.operating.transactionFees = clamp(config.operating.transactionFees, 0, 2_000_000);
   safeConfig.capTable.founderPercent = Math.max(0, config.capTable.founderPercent);
   safeConfig.capTable.employeeCommonPercent = Math.max(0, config.capTable.employeeCommonPercent);
   safeConfig.capTable.employeePoolPercent = Math.max(0, config.capTable.employeePoolPercent);

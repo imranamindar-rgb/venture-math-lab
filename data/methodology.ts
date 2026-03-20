@@ -24,6 +24,14 @@ export const methodologySections = [
     ],
   },
   {
+    title: "Operator Intelligence Layer",
+    body: [
+      "Runway, burn, revenue growth, and gross margin are modeled separately from cap-table mechanics because survival to the next round is an operating problem before it is a valuation problem.",
+      "The operator layer estimates runway, financing gap, burn multiple, working capital, liquidity ratios, and a simplified statement bridge from financing event to next-round cash position.",
+      "This keeps the product useful for founders and executives who need to connect fundraising strategy to actual cash discipline rather than only valuation optics.",
+    ],
+  },
+  {
     title: "Monte Carlo Simulation Engine",
     body: [
       "The simulation engine samples survival, timing, round pricing, follow-ons, and exit outcomes across thousands of paths rather than pretending there is one expected future.",
@@ -51,7 +59,8 @@ export const methodologySections = [
     title: "Cap Table and Waterfall Engine",
     body: [
       "The cap-table engine always reasons from a fully diluted base, so option pool refreshes, SAFE conversion, and note conversion alter ownership before exit proceeds are allocated.",
-      "Exit value first services note debt and similar senior claims, then preferred stock chooses either the 1x non-participating preference or as-converted common economics.",
+      "Preferred stock is tracked as a stack of named series with owner group, liquidation preference, conversion price reference, anti-dilution mode, and explicit seniority.",
+      "Exit value first services note debt and similar senior claims, then each preferred series follows its own liquidation or conversion path inside the waterfall.",
       "This engine is where dilution mechanics and liquidation mechanics meet, which is why it has to stay separate from the deterministic finance formulas and the simulation loop.",
     ],
   },
@@ -59,14 +68,17 @@ export const methodologySections = [
     title: "Liquidity Waterfalls",
     body: [
       "Exit value first services note debt and similar senior claims.",
-      "Preferred stock then chooses either the 1x non-participating preference or as-converted common economics.",
+      "Preferred stock then follows the configured liquidation structure series by series: non-participating preferred can convert individually, while participating preferred takes its preference first and then shares in the residual common pool.",
+      "Seniority is applied layer by layer, so newer preferred series can consume value ahead of older ones in modest exits.",
       "Common holders receive the residual, and employee net value is reduced by modeled exercise cost exposure.",
     ],
   },
   {
     title: "What v1 Does Not Model",
     body: [
-      "Anti-dilution clauses, warrants, participating preferred, layered seniority, tax treatment, and bespoke governance rights are explained but not simulated numerically.",
+      "Warrants, capped participation, tax treatment, and bespoke governance rights are explained but not simulated numerically.",
+      "The app now tracks preferred stock by series and seniority, but it still assumes standard-friendly class behavior instead of reproducing a law-firm-grade charter.",
+      "Anti-dilution is modeled per series using broad-weighted-average or full-ratchet approximations, not custom pay-to-play definitions or bespoke capitalization rules.",
       "Those terms can matter a lot, but they push the product from decision-support into bespoke legal modeling.",
       "The methodology page should therefore be read as venture math under standard-friendly documents, not as a substitute for counsel.",
     ],
@@ -105,5 +117,17 @@ export const glossary = [
   {
     term: "Waterfall",
     definition: "The ordered payout logic that determines who gets paid first and when preferred converts to common.",
+  },
+  {
+    term: "Preferred series stack",
+    definition: "The ordered list of preferred share classes, each with its own seniority, liquidation preference, and conversion behavior.",
+  },
+  {
+    term: "Participating preferred",
+    definition: "Preferred stock that takes its liquidation preference first, then also participates in the remaining common-value pool.",
+  },
+  {
+    term: "Anti-dilution",
+    definition: "A preferred-stock protection that adjusts conversion economics in a down round so earlier investors receive more as-converted shares.",
   },
 ];

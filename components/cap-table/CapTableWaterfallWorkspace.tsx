@@ -70,7 +70,7 @@ function WaterfallCard({
                 <p className="mt-1 text-sm text-slate-500">Exit value {formatCurrency(scenario.exitValue)}</p>
               </div>
               <div className="rounded-full border border-border bg-white px-3 py-1 text-xs uppercase tracking-[0.16em] text-slate-500">
-                {scenario.preferredConverted ? "As-converted" : "Preference"}
+                {scenario.preferredStructure}
               </div>
             </div>
             <dl className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -94,6 +94,10 @@ function WaterfallCard({
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Note payout</dt>
                 <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.noteProceeds)}</dd>
               </div>
+              <div className="rounded-2xl bg-white px-3 py-3">
+                <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">SAFE payout</dt>
+                <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.safeProceeds)}</dd>
+              </div>
             </dl>
             {scenario.founderBreakdown.length > 1 ? (
               <div className="mt-4 rounded-2xl bg-white px-3 py-3">
@@ -103,6 +107,24 @@ function WaterfallCard({
                     <li key={founder.id} className="flex items-center justify-between">
                       <span>{founder.name}</span>
                       <span className="font-semibold text-slate-900">{formatCurrency(founder.proceeds)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {scenario.seriesBreakdown.length > 0 ? (
+              <div className="mt-4 rounded-2xl bg-white px-3 py-3">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Preferred series</p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                  {scenario.seriesBreakdown.map((series) => (
+                    <li key={series.id} className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-slate-900">{series.label}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">
+                          {series.structure} / seniority {series.seniority}
+                        </p>
+                      </div>
+                      <span className="font-semibold text-slate-900">{formatCurrency(series.payout)}</span>
                     </li>
                   ))}
                 </ul>

@@ -2,9 +2,12 @@ import Link from "next/link";
 
 import { PageShell } from "@/components/layout/PageShell";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 
 const pillars = [
+  {
+    title: "Venture fundamentals dashboard",
+    body: "Interactive teaching surface for power-law returns, dilution ladders, threshold math, and why venture behaves differently from normal finance.",
+  },
   {
     title: "Deterministic finance engine",
     body: "Inspectable formulas for post-money, ownership, return thresholds, and benchmark dilution before uncertainty widens the range.",
@@ -17,7 +20,40 @@ const pillars = [
     title: "Cap table and waterfall engine",
     body: "Fully diluted ownership, SAFE and note conversion, option-pool refreshes, and liquidation outcomes under standard venture terms.",
   },
+  {
+    title: "Fund construction lab",
+    body: "Whole-fund modeling for fees, reserves, check sizing, concentration, one-company-return-the-fund odds, and top-quartile probabilities.",
+  },
+  {
+    title: "Operator intelligence layer",
+    body: "Runway, burn, margin, financing gap, and cash buffer analysis so founders can connect fundraising math to actual operating survival.",
+  },
 ];
+
+function ActionLink({
+  href,
+  label,
+  variant = "primary",
+}: {
+  href: string;
+  label: string;
+  variant?: "primary" | "secondary" | "ghost";
+}) {
+  return (
+    <Link
+      href={href}
+      className={
+        variant === "primary"
+          ? "inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:brightness-105"
+          : variant === "secondary"
+            ? "inline-flex items-center justify-center rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:bg-amber-50"
+            : "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+      }
+    >
+      {label}
+    </Link>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -34,18 +70,14 @@ export default function HomePage() {
               founders, operators, and investors can inspect the venture math before the term sheet arrives.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/calculator">
-                <Button>Open calculator</Button>
-              </Link>
-              <Link href="/simulator">
-                <Button variant="secondary">Run simulation</Button>
-              </Link>
-              <Link href="/cap-table">
-                <Button variant="secondary">Inspect cap table</Button>
-              </Link>
-              <Link href="/methodology">
-                <Button variant="ghost">Read methodology</Button>
-              </Link>
+              <ActionLink href="/dashboard" label="Open dashboard" />
+              <ActionLink href="/calculator" label="Open calculator" variant="secondary" />
+              <ActionLink href="/simulator" label="Run simulation" variant="secondary" />
+              <ActionLink href="/cap-table" label="Inspect cap table" variant="secondary" />
+              <ActionLink href="/fund" label="Open fund lab" variant="secondary" />
+              <ActionLink href="/operator" label="Open operator lab" variant="secondary" />
+              <ActionLink href="/report" label="Open report" variant="secondary" />
+              <ActionLink href="/methodology" label="Read methodology" variant="ghost" />
             </div>
           </div>
 
@@ -67,12 +99,15 @@ export default function HomePage() {
                   SAFEs, capped notes, standard preferred, option-pool refreshes, and partial secondary liquidity stay
                   rigorous but explainable.
                 </p>
+                <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-500">
+                  Every scenario now carries a standard, approximate, or unsupported support tag before you export it.
+                </p>
               </div>
             </div>
           </Card>
         </div>
 
-        <div className="mt-16 grid gap-4 md:grid-cols-3">
+        <div className="mt-16 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {pillars.map((pillar) => (
             <Card key={pillar.title}>
               <p className="font-heading text-xl font-semibold">{pillar.title}</p>

@@ -2,7 +2,6 @@ services:
   - type: web
     name: venture-math-lab
     runtime: node
-    rootDir: Documents/GPT_Coding/venture-math-lab
     buildCommand: npm install && npm run build
     startCommand: npm run start
     healthCheckPath: /health

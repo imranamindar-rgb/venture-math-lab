@@ -9,6 +9,7 @@ import {
   getFullyDilutedShares,
   getInvestorOwnership,
   getPoolOwnership,
+  getPreferredShares,
   getPriorInvestorOwnership,
 } from "@/lib/sim/cap-table";
 import { runMonteCarlo } from "@/lib/sim/engine";
@@ -68,6 +69,7 @@ describe("venture math simulation", () => {
     const scenario = getScenarioPreset("nvca_standard");
     scenario.currentRoundKind = "priced_preferred";
     scenario.currentPreMoney = 18_000_000;
+    scenario.currentRoundSize = 4_000_000;
     scenario.investor.initialCheck = 4_000_000;
     const snapshot = createInitialCapTable(scenario);
 
@@ -83,11 +85,13 @@ describe("venture math simulation", () => {
     const lowEntry = getScenarioPreset("nvca_standard");
     lowEntry.currentRoundKind = "priced_preferred";
     lowEntry.currentPreMoney = 12_000_000;
+    lowEntry.currentRoundSize = 3_000_000;
     lowEntry.investor.initialCheck = 3_000_000;
 
     const highEntry = getScenarioPreset("nvca_standard");
     highEntry.currentRoundKind = "priced_preferred";
     highEntry.currentPreMoney = 24_000_000;
+    highEntry.currentRoundSize = 3_000_000;
     highEntry.investor.initialCheck = 3_000_000;
 
     const lowWaterfall = computeWaterfall(createInitialCapTable(lowEntry), 90_000_000, 0);
@@ -106,5 +110,122 @@ describe("venture math simulation", () => {
     expect(snapshot.realizedFounderSecondary).toBeGreaterThan(0);
     expect(snapshot.realizedEmployeeSecondary).toBeGreaterThan(0);
     expect(getFullyDilutedShares(snapshot)).toBeCloseTo(before, 6);
+  });
+
+  it("uses the full priced round size for dilution while only crediting the modeled investor with their own check", () => {
+    const scenario = getScenarioPreset("nvca_standard");
+    scenario.currentRoundKind = "priced_preferred";
+    scenario.currentPreMoney = 12_000_000;
+    scenario.currentRoundSize = 6_000_000;
+    scenario.investor.initialCheck = 3_000_000;
+    const snapshot = createInitialCapTable(scenario);
+
+    expect(getInvestorOwnership(snapshot)).toBeCloseTo(3_000_000 / 18_000_000, 6);
+    expect(getPriorInvestorOwnership(snapshot)).toBeGreaterThan(scenario.capTable.priorInvestorPercent / 100);
+    expect(snapshot.modeledInvestorInvested).toBe(3_000_000);
+  });
+
+  it("pays a SAFE holder in low-liquidity exits even before a qualified financing", () => {
+    const scenario = getScenarioPreset("nvca_standard");
+    scenario.currentRoundKind = "safe_post_money";
+    scenario.safe.enabled = true;
+    scenario.safe.investment = 500_000;
+    scenario.safe.postMoneyCap = 10_000_000;
+    scenario.currentRoundSize = 500_000;
+    const snapshot = createInitialCapTable(scenario);
+
+    const lowExit = computeWaterfall(snapshot, 400_000, 0);
+    const strongExit = computeWaterfall(snapshot, 20_000_000, 0);
+
+    expect(lowExit.safePayout).toBe(400_000);
+    expect(lowExit.investorPayout).toBe(400_000);
+    expect(strongExit.safePayout).toBeGreaterThan(500_000);
+  });
+
+  it("pays the modeled note holder before preferred and common in weak exits", () => {
+    const scenario = getScenarioPreset("stress_case");
+    scenario.currentRoundKind = "convertible_note_cap";
+    scenario.note.enabled = true;
+    scenario.note.principal = 1_000_000;
+    scenario.currentRoundSize = 1_000_000;
+    const snapshot = createInitialCapTable(scenario);
+
+    const lowExit = computeWaterfall(snapshot, 600_000, 0);
+
+    expect(lowExit.notePayout).toBe(600_000);
+    expect(lowExit.investorPayout).toBe(600_000);
+    expect(lowExit.preferredPayout).toBe(0);
+  });
+
+  it("participating preferred pays the investor more than non-participating preferred in a midrange exit", () => {
+    const nonParticipating = getScenarioPreset("nvca_standard");
+    nonParticipating.currentRoundKind = "priced_preferred";
+    nonParticipating.currentPreMoney = 16_000_000;
+    nonParticipating.currentRoundSize = 4_000_000;
+    nonParticipating.investor.initialCheck = 4_000_000;
+    nonParticipating.capTable.founderPercent = 80;
+    nonParticipating.capTable.employeeCommonPercent = 0;
+    nonParticipating.capTable.employeePoolPercent = 20;
+    nonParticipating.capTable.priorInvestorPercent = 0;
+    nonParticipating.preferred.participationMode = "non_participating";
+
+    const participating = structuredClone(nonParticipating);
+    participating.preferred.participationMode = "participating";
+
+    const nonParticipatingWaterfall = computeWaterfall(createInitialCapTable(nonParticipating), 30_000_000, 0, nonParticipating.preferred);
+    const participatingWaterfall = computeWaterfall(createInitialCapTable(participating), 30_000_000, 0, participating.preferred);
+
+    expect(participatingWaterfall.investorPayout).toBeGreaterThan(nonParticipatingWaterfall.investorPayout);
+    expect(participatingWaterfall.preferredStructure).toContain("participating");
+  });
+
+  it("higher liquidation multiples increase investor downside protection", () => {
+    const base = getScenarioPreset("nvca_standard");
+    base.currentRoundKind = "priced_preferred";
+    base.currentPreMoney = 18_000_000;
+    base.currentRoundSize = 4_000_000;
+    base.investor.initialCheck = 4_000_000;
+    base.preferred.liquidationMultiple = 1;
+
+    const stepped = structuredClone(base);
+    stepped.preferred.liquidationMultiple = 2;
+
+    const baseWaterfall = computeWaterfall(createInitialCapTable(base), 8_000_000, 0, base.preferred);
+    const steppedWaterfall = computeWaterfall(createInitialCapTable(stepped), 8_000_000, 0, stepped.preferred);
+
+    expect(steppedWaterfall.investorPayout).toBeGreaterThanOrEqual(baseWaterfall.investorPayout);
+    expect(steppedWaterfall.preferredPayout).toBeGreaterThan(baseWaterfall.preferredPayout);
+  });
+
+  it("anti-dilution adds modeled investor shares in down rounds", () => {
+    const base = getScenarioPreset("nvca_standard");
+    base.currentRoundKind = "priced_preferred";
+    base.currentPreMoney = 16_000_000;
+    base.currentRoundSize = 4_000_000;
+    base.investor.initialCheck = 4_000_000;
+    base.investor.proRata = false;
+    base.investor.reserveMultiple = 0;
+
+    const noProtection = structuredClone(base);
+    noProtection.preferred.antiDilutionMode = "none";
+
+    const weightedAverage = structuredClone(base);
+    weightedAverage.preferred.antiDilutionMode = "broad_weighted_average";
+
+    const fullRatchet = structuredClone(base);
+    fullRatchet.preferred.antiDilutionMode = "full_ratchet";
+
+    const noneSnapshot = createInitialCapTable(noProtection);
+    const weightedSnapshot = createInitialCapTable(weightedAverage);
+    const fullRatchetSnapshot = createInitialCapTable(fullRatchet);
+
+    issuePreferredRound(noneSnapshot, 8_000_000, 4_000_000, noProtection);
+    issuePreferredRound(weightedSnapshot, 8_000_000, 4_000_000, weightedAverage);
+    issuePreferredRound(fullRatchetSnapshot, 8_000_000, 4_000_000, fullRatchet);
+
+    expect(getPreferredShares(weightedSnapshot, "modeled")).toBeGreaterThan(getPreferredShares(noneSnapshot, "modeled"));
+    expect(getPreferredShares(fullRatchetSnapshot, "modeled")).toBeGreaterThan(
+      getPreferredShares(weightedSnapshot, "modeled"),
+    );
   });
 });

@@ -1,5 +1,13 @@
 import { sumFounderOwnership } from "@/lib/founders";
-import { ScenarioConfig, CapTableSnapshot, OwnershipPoint } from "@/lib/sim/types";
+import { getCurrentFinancing } from "@/lib/current-financing";
+import {
+  ScenarioConfig,
+  CapTableSnapshot,
+  OwnershipPoint,
+  PreferredOwnerGroup,
+  PreferredSeriesSnapshot,
+  PreferredTermsConfig,
+} from "@/lib/sim/types";
 
 const BASE_SHARES = 10_000_000;
 
@@ -20,39 +28,137 @@ function normalizedBasePercents(config: ScenarioConfig) {
   };
 }
 
+function createPreferredSeries(
+  id: string,
+  label: string,
+  ownerGroup: PreferredOwnerGroup,
+  shares: number,
+  liquidationPreference: number,
+  seniority: number,
+  terms: PreferredTermsConfig,
+  referencePricePerShare = shares > 0 ? liquidationPreference / shares : 0,
+): PreferredSeriesSnapshot {
+  return {
+    id,
+    label,
+    ownerGroup,
+    shares,
+    liquidationPreference,
+    participationMode: terms.participationMode,
+    liquidationMultiple: terms.liquidationMultiple,
+    antiDilutionMode: terms.antiDilutionMode,
+    seniority,
+    referencePricePerShare,
+  };
+}
+
+export function clonePreferredSeries(series: PreferredSeriesSnapshot[]) {
+  return series.map((entry) => ({ ...entry }));
+}
+
+export function getPreferredSeries(snapshot: CapTableSnapshot, ownerGroup?: PreferredOwnerGroup) {
+  if (!ownerGroup) {
+    return snapshot.preferredSeries;
+  }
+  return snapshot.preferredSeries.filter((entry) => entry.ownerGroup === ownerGroup);
+}
+
+export function getPreferredShares(snapshot: CapTableSnapshot, ownerGroup?: PreferredOwnerGroup) {
+  return getPreferredSeries(snapshot, ownerGroup).reduce((total, entry) => total + entry.shares, 0);
+}
+
+export function getPreferredPreference(snapshot: CapTableSnapshot, ownerGroup?: PreferredOwnerGroup) {
+  return getPreferredSeries(snapshot, ownerGroup).reduce((total, entry) => total + entry.liquidationPreference, 0);
+}
+
+export function getNextPreferredSeniority(snapshot: CapTableSnapshot) {
+  return snapshot.preferredSeries.reduce((highest, entry) => Math.max(highest, entry.seniority), 0) + 1;
+}
+
+export function addPreferredSeries(snapshot: CapTableSnapshot, series: PreferredSeriesSnapshot) {
+  if (series.shares <= 0 && series.liquidationPreference <= 0) {
+    return;
+  }
+  snapshot.preferredSeries.push(series);
+}
+
 export function createInitialCapTable(config: ScenarioConfig): CapTableSnapshot {
   const base = normalizedBasePercents(config);
-  const referencePostMoney =
-    config.currentRoundKind === "safe_post_money"
-      ? config.safe.postMoneyCap
-      : config.currentRoundKind === "convertible_note_cap"
-        ? config.note.preMoneyCap + config.note.principal
-        : config.currentPreMoney + config.investor.initialCheck;
-
-  const pricedInvestorOwnership =
-    config.currentRoundKind === "priced_preferred"
-      ? config.investor.initialCheck / (config.currentPreMoney + config.investor.initialCheck)
+  const financing = getCurrentFinancing(config);
+  const totalNewInvestorOwnership =
+    config.currentRoundKind === "priced_preferred" && financing.pricedPostMoney > 0
+      ? financing.totalRoundRaise / financing.pricedPostMoney
+      : 0;
+  const modeledInvestorOwnership =
+    config.currentRoundKind === "priced_preferred" ? financing.investorOwnershipEstimate : 0;
+  const syndicateOwnership =
+    config.currentRoundKind === "priced_preferred" && financing.pricedPostMoney > 0
+      ? financing.syndicateCheck / financing.pricedPostMoney
       : 0;
 
-  const incumbentShareScale = 1 - pricedInvestorOwnership;
+  const incumbentShareScale = 1 - totalNewInvestorOwnership;
   const founderCommon = BASE_SHARES * base.founder * incumbentShareScale;
   const employeeCommon = BASE_SHARES * base.employeeCommon * incumbentShareScale;
   const employeePool = BASE_SHARES * base.employeePool * incumbentShareScale;
-  const priorInvestorPreferred = BASE_SHARES * base.priorInvestor * incumbentShareScale;
-  const modeledInvestorPreferred = BASE_SHARES * pricedInvestorOwnership;
+  const priorInvestorShares = BASE_SHARES * base.priorInvestor * incumbentShareScale;
+  const syndicateShares = BASE_SHARES * syndicateOwnership;
+  const modeledInvestorShares = BASE_SHARES * modeledInvestorOwnership;
+  const preferredSeries: PreferredSeriesSnapshot[] = [];
+
+  if (priorInvestorShares > 0) {
+    preferredSeries.push(
+      createPreferredSeries(
+        "prior-existing",
+        "Existing prior preferred",
+        "prior",
+        priorInvestorShares,
+        financing.referencePostMoney * base.priorInvestor * incumbentShareScale,
+        1,
+        config.preferred,
+      ),
+    );
+  }
+
+  if (syndicateShares > 0) {
+    preferredSeries.push(
+      createPreferredSeries(
+        "current-syndicate",
+        `${config.currentStage.replace("_", " ")} syndicate`,
+        "prior",
+        syndicateShares,
+        financing.syndicateCheck,
+        2,
+        config.preferred,
+      ),
+    );
+  }
+
+  if (modeledInvestorShares > 0) {
+    preferredSeries.push(
+      createPreferredSeries(
+        "current-modeled",
+        `Modeled ${config.currentStage.replace("_", " ")} investor`,
+        "modeled",
+        modeledInvestorShares,
+        config.currentRoundKind === "priced_preferred" ? financing.modeledInvestorCheck : 0,
+        2,
+        config.preferred,
+      ),
+    );
+  }
 
   return {
     founderCommon,
     employeeCommon,
     employeePool,
-    priorInvestorPreferred,
-    modeledInvestorPreferred,
+    preferredSeries,
     secondaryCommon: 0,
-    priorInvestorLiquidationPref: referencePostMoney * base.priorInvestor * incumbentShareScale,
-    modeledInvestorLiquidationPref:
-      config.currentRoundKind === "priced_preferred" ? config.investor.initialCheck : 0,
-    modeledInvestorInvested: config.investor.initialCheck,
-    noteOutstanding: config.note.enabled ? config.note.principal : 0,
+    modeledInvestorInvested: financing.modeledInvestorCheck,
+    safeOutstanding:
+      config.currentRoundKind === "safe_post_money" && config.safe.enabled ? financing.modeledInvestorCheck : 0,
+    safePostMoneyCap: config.currentRoundKind === "safe_post_money" ? config.safe.postMoneyCap : 0,
+    noteOutstanding:
+      config.currentRoundKind === "convertible_note_cap" && config.note.enabled ? financing.modeledInvestorCheck : 0,
     realizedFounderSecondary: 0,
     realizedEmployeeSecondary: 0,
   };
@@ -63,18 +169,7 @@ export function getFullyDilutedShares(snapshot: CapTableSnapshot) {
     snapshot.founderCommon +
     snapshot.employeeCommon +
     snapshot.employeePool +
-    snapshot.priorInvestorPreferred +
-    snapshot.modeledInvestorPreferred +
-    snapshot.secondaryCommon
-  );
-}
-
-export function getParticipatingCommonShares(snapshot: CapTableSnapshot) {
-  return (
-    snapshot.founderCommon +
-    snapshot.employeeCommon +
-    snapshot.priorInvestorPreferred +
-    snapshot.modeledInvestorPreferred +
+    getPreferredShares(snapshot) +
     snapshot.secondaryCommon
   );
 }
@@ -88,11 +183,11 @@ export function getEmployeeOwnership(snapshot: CapTableSnapshot) {
 }
 
 export function getInvestorOwnership(snapshot: CapTableSnapshot) {
-  return snapshot.modeledInvestorPreferred / getFullyDilutedShares(snapshot);
+  return getPreferredShares(snapshot, "modeled") / getFullyDilutedShares(snapshot);
 }
 
 export function getPriorInvestorOwnership(snapshot: CapTableSnapshot) {
-  return snapshot.priorInvestorPreferred / getFullyDilutedShares(snapshot);
+  return getPreferredShares(snapshot, "prior") / getFullyDilutedShares(snapshot);
 }
 
 export function getPoolOwnership(snapshot: CapTableSnapshot) {

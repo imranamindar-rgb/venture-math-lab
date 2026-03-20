@@ -33,12 +33,13 @@ describe("deterministic venture engines", () => {
     const safeSummary = summarizeCapTableWaterfall(safeScenario);
     const noteSummary = summarizeCapTableWaterfall(noteScenario);
 
-    const safeCurrentInvestor = safeSummary.currentRows.find((row) => row.label === "Modeled investor");
-    const safeConvertedInvestor = safeSummary.convertedRows.find((row) => row.label === "Modeled investor");
+    const safeCurrentInvestor = safeSummary.currentRows.find((row) => row.label === "Post-money SAFE");
+    const safeConvertedInvestor = safeSummary.convertedRows.find((row) => row.label.includes("SAFE conversion"));
     const noteCurrentRow = noteSummary.currentRows.find((row) => row.label === "Convertible note");
     const noteConvertedRow = noteSummary.convertedRows.find((row) => row.label === "Convertible note");
 
-    expect(safeConvertedInvestor?.shares).toBeGreaterThan(safeCurrentInvestor?.shares ?? 0);
+    expect(safeConvertedInvestor?.shares).toBeGreaterThan(0);
+    expect(safeCurrentInvestor?.preferenceAmount).toBeGreaterThan(0);
     expect(noteCurrentRow?.preferenceAmount).toBeGreaterThan(0);
     expect(noteConvertedRow).toBeUndefined();
   });

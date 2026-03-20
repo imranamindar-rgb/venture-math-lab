@@ -1,11 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { ChangeEvent, useMemo, useRef, useState } from "react";
 
 import { presetOptions, useScenarioStore } from "@/lib/state/scenario-store";
 import { ScenarioEditor } from "@/components/simulator/ScenarioEditor";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SupportBadge } from "@/components/ui/SupportBadge";
+import { analyzeScenario } from "@/lib/scenario-diagnostics";
+import { buildScenarioCsv } from "@/lib/export";
 import { formatCurrency } from "@/lib/format";
 
 interface PrimaryAction {
@@ -59,6 +63,7 @@ export function ActiveScenarioPanel({
 
     return hintWhenReady;
   }, [hintWhenReady, importStatus]);
+  const diagnostics = useMemo(() => analyzeScenario(active), [active]);
 
   const handleExport = () => {
     const payload = exportScenarioFile("active");
@@ -67,6 +72,17 @@ export function ActiveScenarioPanel({
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = `${active.id}-scenario.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCsv = () => {
+    const payload = buildScenarioCsv(active);
+    const blob = new Blob([payload], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${active.id}-summary.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -113,8 +129,12 @@ export function ActiveScenarioPanel({
 
         <div className="space-y-5 pt-5">
           <div className="rounded-panel border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            <p className="font-semibold">{guidanceTitle}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-semibold">{guidanceTitle}</p>
+              <SupportBadge level={diagnostics.supportLevel} label={diagnostics.supportLabel} />
+            </div>
             <p className="mt-2 leading-6">{guidanceBody}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{diagnostics.summary}</p>
           </div>
 
           <ScenarioEditor
@@ -138,9 +158,18 @@ export function ActiveScenarioPanel({
           <Button variant="secondary" onClick={handleExport}>
             Export JSON
           </Button>
+          <Button variant="secondary" onClick={handleExportCsv}>
+            Export CSV
+          </Button>
           <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
             Import JSON
           </Button>
+          <Link
+            href="/report"
+            className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+          >
+            Open report
+          </Link>
           <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImport} />
         </div>
         <p className="mt-3 text-sm text-slate-500">
@@ -148,6 +177,19 @@ export function ActiveScenarioPanel({
           engine normalizes the mix if it is not exactly 100%.
         </p>
         <p className="mt-2 text-sm text-slate-500">{importHint}</p>
+        {diagnostics.issues.length > 0 ? (
+          <div className="mt-4 space-y-2">
+            {diagnostics.issues.slice(0, 4).map((issue) => (
+              <div
+                key={`${issue.level}-${issue.title}`}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+              >
+                <p className="font-semibold text-slate-900">{issue.title}</p>
+                <p className="mt-1 leading-6 text-slate-600">{issue.detail}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {saved.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {saved.slice(0, 4).map((snapshot) => (

@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-03-20T16:45:00.000Z",
+  "benchmarks": [
+    {
+      "sourceName": "PitchBook-NVCA Venture Monitor",
+      "metricUsed": "Median pre-money valuations by stage: pre-seed $7.7M, seed $15.8M, Series A $46.5M, Series B $133.2M, Series C $307.0M; median deal sizes by stage: $0.5M, $3.8M, $14.0M, $32.4M, $56.5M",
+      "period": "As of September 30, 2025",
+      "benchmarkType": "hard benchmark",
+      "url": "https://nvca.org/wp-content/uploads/2025/10/Q3-2025-PitchBook-NVCA-Venture-Monitor.pdf"
+    },
+    {
+      "sourceName": "Carta Founder Ownership Report 2025",
+      "metricUsed": "Median founding-team ownership after seed 56.2%, after Series A 36.1%, after Series B 23.0%; equal two-person founder splits 45.9% in 2024",
+      "period": "Published January 21, 2025",
+      "benchmarkType": "hard benchmark for dilution; contextual reference for cofounder split",
+      "url": "https://carta.com/uk/en/data/founder-ownership/"
+    },
+    {
+      "sourceName": "Carta State of Pre-Seed: Q3 2024",
+      "metricUsed": "89% of all pre-priced investments were SAFEs; 87% of those SAFEs were post-money; median post-money SAFE over the past year raised $275K at a $10M cap",
+      "period": "Published November 4, 2024",
+      "benchmarkType": "hard benchmark",
+      "url": "https://carta.com/data/state-of-pre-seed-q3-2024/"
+    },
+    {
+      "sourceName": "Y Combinator SAFE Financing Documents / Post-Money SAFE Primer",
+      "metricUsed": "Three post-money SAFE forms for US companies; ownership sold is immediately calculable; example SAFE ownership of $200K/$4M = 5% and $800K/$8M = 10%; liquidity event cash-out versus conversion behavior",
+      "period": "Accessed March 20, 2026",
+      "benchmarkType": "hard benchmark",
+      "url": "https://www.ycombinator.com/documents.html"
+    },
+    {
+      "sourceName": "Carta State of Private Markets: 2025 in Review",
+      "metricUsed": "Series A AI valuation premium 38%; median dilution from seed through Series C fell from about 18% to 16%; 2025 capital raised totaled $119.5B across 4,859 rounds",
+      "period": "Published February 18, 2026",
+      "benchmarkType": "soft benchmark",
+      "url": "https://carta.com/data/state-of-private-markets-q4-2025/"
+    },
+    {
+      "sourceName": "OECD Venture capital investments in artificial intelligence through 2025",
+      "metricUsed": "AI made up 61% of global VC investment in 2025; mega deals over $100M accounted for about 73% of AI investment value in 2025",
+      "period": "OECD 2026 policy brief using 2025 data",
+      "benchmarkType": "hard benchmark",
+      "url": "https://www.oecd.org/en/publications/venture-capital-investments-in-artificial-intelligence-through-2025_a13752f5-en/full-report.html"
+    }
+  ]
+}

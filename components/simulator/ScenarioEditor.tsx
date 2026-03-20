@@ -151,7 +151,7 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
           </Field>
           <Field
             label="Current round size or raise amount"
-            hint="This is the cash the company has to buy time to the next milestone or qualified financing."
+            hint="Use the full round size here, not just the modeled investor check. In priced rounds it sets total dilution. In SAFE and note cases it anchors company cash runway."
           >
             <input
               type="number"
@@ -330,6 +330,59 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             />
           </Field>
           <Field
+            label="Preferred participation"
+            hint="Non-participating preferred takes either the preference or common conversion. Participating preferred takes the preference first, then shares again in the residual common pool."
+          >
+            <select
+              value={config.preferred.participationMode}
+              onChange={(event) =>
+                onNestedChange("preferred", {
+                  participationMode: event.target.value as "non_participating" | "participating",
+                })
+              }
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            >
+              <option value="non_participating">Non-participating</option>
+              <option value="participating">Participating</option>
+            </select>
+          </Field>
+          <Field
+            label="Liquidation multiple"
+            hint="Standard venture terms are usually 1x. Higher multiples protect investors more aggressively in modest exits."
+          >
+            <input
+              type="number"
+              min={1}
+              max={3}
+              step="0.1"
+              value={config.preferred.liquidationMultiple}
+              onChange={(event) =>
+                onNestedChange("preferred", {
+                  liquidationMultiple: numberValue(event),
+                })
+              }
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Anti-dilution mode"
+            hint="Use this to stress how existing preferred stock resets conversion price in a down round. Broad weighted average is the standard-friendly approximation."
+          >
+            <select
+              value={config.preferred.antiDilutionMode}
+              onChange={(event) =>
+                onNestedChange("preferred", {
+                  antiDilutionMode: event.target.value as "none" | "broad_weighted_average" | "full_ratchet",
+                })
+              }
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            >
+              <option value="none">None</option>
+              <option value="broad_weighted_average">Broad weighted average</option>
+              <option value="full_ratchet">Full ratchet</option>
+            </select>
+          </Field>
+          <Field
             label="Note cap"
             hint="Notes price as the better of cap or discount and stay senior to equity in weak exits, so they can be harsher than a clean equity round."
           >
@@ -357,6 +410,141 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
 
       <section className="space-y-4">
         <div>
+          <h3 className="font-heading text-lg font-semibold">Operating reality</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            These inputs connect venture math to survival math: runway, margin, revenue growth, and the cash gap to the next financing window.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field
+            label="Cash on hand"
+            hint="Current unrestricted cash available to fund the company before the next financing event."
+          >
+            <input
+              type="number"
+              value={config.operating.cashOnHand}
+              onChange={(event) => onNestedChange("operating", { cashOnHand: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Monthly burn"
+            hint="Net cash burn per month after revenue collection. This is the core runway driver."
+          >
+            <input
+              type="number"
+              value={config.operating.monthlyBurn}
+              onChange={(event) => onNestedChange("operating", { monthlyBurn: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Monthly revenue"
+            hint="Current monthly revenue. The operator layer annualizes this and projects it toward the next financing benchmark."
+          >
+            <input
+              type="number"
+              value={config.operating.monthlyRevenue}
+              onChange={(event) => onNestedChange("operating", { monthlyRevenue: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Monthly revenue growth"
+            hint="Expected monthly revenue growth toward the next financing window. This drives the burn-multiple estimate."
+          >
+            <input
+              type="number"
+              step="0.01"
+              value={config.operating.monthlyRevenueGrowth}
+              onChange={(event) => onNestedChange("operating", { monthlyRevenueGrowth: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Gross margin"
+            hint="Software-like gross margins support cleaner venture scaling. Lower margins make future step-ups harder to justify."
+          >
+            <input
+              type="number"
+              step="0.01"
+              value={config.operating.grossMargin}
+              onChange={(event) => onNestedChange("operating", { grossMargin: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Target cash buffer months"
+            hint="How much post-round safety margin the company wants beyond the next benchmark financing date."
+          >
+            <input
+              type="number"
+              step="1"
+              value={config.operating.targetCashBufferMonths}
+              onChange={(event) => onNestedChange("operating", { targetCashBufferMonths: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Accounts receivable"
+            hint="Use this to teach the balance-sheet side of growth. Revenue can be booked before cash arrives."
+          >
+            <input
+              type="number"
+              value={config.operating.accountsReceivable}
+              onChange={(event) => onNestedChange("operating", { accountsReceivable: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Inventory"
+            hint="Leave at zero for software. Use it for hardware or hybrid businesses where cash gets trapped before revenue is recognized."
+          >
+            <input
+              type="number"
+              value={config.operating.inventory}
+              onChange={(event) => onNestedChange("operating", { inventory: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Accounts payable"
+            hint="Supplier payables are current liabilities. They help working capital but can disguise fragility if cash is thin."
+          >
+            <input
+              type="number"
+              value={config.operating.accountsPayable}
+              onChange={(event) => onNestedChange("operating", { accountsPayable: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Monthly capex"
+            hint="This is cash that leaves the business for long-lived assets. It matters for free cash flow even when burn looks manageable."
+          >
+            <input
+              type="number"
+              value={config.operating.capexMonthly}
+              onChange={(event) => onNestedChange("operating", { capexMonthly: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+          <Field
+            label="Transaction fees"
+            hint="Modeled legal, banking, and closing costs for the current financing. These reduce how much new cash actually lands on the balance sheet."
+          >
+            <input
+              type="number"
+              value={config.operating.transactionFees}
+              onChange={(event) => onNestedChange("operating", { transactionFees: numberValue(event) })}
+              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            />
+          </Field>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div>
           <h3 className="font-heading text-lg font-semibold">Stakeholder controls</h3>
           <p className="mt-1 text-sm text-slate-500">
             These inputs determine how much the current investor can defend ownership and how much value employees must create to clear exercise cost.
@@ -365,7 +553,7 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
         <div className="grid gap-4 md:grid-cols-2">
           <Field
             label="Investor initial check"
-            hint="This is the base capital at risk for the modeled investor and anchors return-the-fund math."
+            hint="Use this for the modeled investor's priced-round check. If the current instrument is a SAFE or note, the simulator follows SAFE investment or note principal instead when they differ."
           >
             <input
               type="number"

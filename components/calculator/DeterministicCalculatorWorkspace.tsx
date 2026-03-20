@@ -138,7 +138,7 @@ export function DeterministicCalculatorWorkspace() {
                         <p className="mt-1 text-sm text-slate-500">Exit value {formatCurrency(scenario.exitValue)}</p>
                       </div>
                       <div className="rounded-full border border-border bg-white px-3 py-1 text-xs uppercase tracking-[0.16em] text-slate-500">
-                        {scenario.preferredConverted ? "As-converted" : "Preference"}
+                        {scenario.preferredStructure}
                       </div>
                     </div>
                     <dl className="mt-4 grid gap-3 md:grid-cols-3">

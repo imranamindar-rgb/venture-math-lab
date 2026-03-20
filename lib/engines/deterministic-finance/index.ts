@@ -27,6 +27,7 @@ import {
   ScenarioConfig,
   stageOrder,
 } from "@/lib/sim/types";
+import { getCurrentFinancing } from "@/lib/current-financing";
 
 export interface FormulaLine {
   label: string;
@@ -49,6 +50,7 @@ export interface DeterministicRoundProjection {
   investorOwnership: number;
   poolOwnership: number;
   secondaryApplied: boolean;
+  antiDilutionApplied: boolean;
 }
 
 export interface DeterministicWaterfallScenario {
@@ -58,6 +60,7 @@ export interface DeterministicWaterfallScenario {
   employeeProceeds: number;
   investorProceeds: number;
   preferredConverted: boolean;
+  preferredStructure: string;
 }
 
 export interface DeterministicFinanceSummary {
@@ -75,15 +78,7 @@ export interface DeterministicFinanceSummary {
 }
 
 function getCurrentInvestorOwnershipEstimate(config: ScenarioConfig) {
-  if (config.currentRoundKind === "priced_preferred") {
-    return calculateInvestorOwnership(config.currentPreMoney, config.investor.initialCheck);
-  }
-
-  if (config.currentRoundKind === "safe_post_money") {
-    return config.safe.investment / config.safe.postMoneyCap;
-  }
-
-  return config.note.principal / (config.note.preMoneyCap + config.note.principal);
+  return getCurrentFinancing(config).investorOwnershipEstimate;
 }
 
 function getEmployeeExerciseCost(config: ScenarioConfig, snapshot: CapTableSnapshot, exitValue: number) {
@@ -108,18 +103,19 @@ function projectDeterministicPath(config: ScenarioConfig) {
     const nextStage = stageOrder[currentStageIndex + 1] as FundingStage;
     const preset = stagePresets[nextStage];
     monthsElapsed += preset.monthsToNext;
+    const nextRound = projectMedianRound(nextStage, currentPostMoney, config);
+
+    const optionPoolRefreshed = maybeRefreshPool(snapshot, config);
+
+    if (!noteConverted && config.note.enabled) {
+      noteConverted = maybeConvertNote(snapshot, config, nextRound.preMoney, monthsElapsed).converted;
+    }
 
     if (!safeConverted && config.safe.enabled) {
       safeConverted = maybeConvertSafe(snapshot, config).converted;
     }
 
-    if (!noteConverted && config.note.enabled) {
-      noteConverted = maybeConvertNote(snapshot, config, currentPostMoney, monthsElapsed).converted;
-    }
-
-    const optionPoolRefreshed = maybeRefreshPool(snapshot, config);
-    const nextRound = projectMedianRound(nextStage, currentPostMoney, config);
-    const issued = issuePreferredRound(snapshot, nextRound.preMoney, nextRound.roundSize, config);
+    const issued = issuePreferredRound(snapshot, nextRound.preMoney, nextRound.roundSize, config, preset.label);
     const shouldApplySecondary =
       config.secondary.enabled && (nextStage === "series_b" || nextStage === "series_c");
 
@@ -146,6 +142,7 @@ function projectDeterministicPath(config: ScenarioConfig) {
       investorOwnership: getInvestorOwnership(snapshot),
       poolOwnership: getPoolOwnership(snapshot),
       secondaryApplied: shouldApplySecondary,
+      antiDilutionApplied: issued.antiDilutionApplied,
     });
 
     currentPostMoney = nextRound.postMoney;
@@ -189,7 +186,8 @@ export function calculateRequiredExitValue(targetProceeds: number, ownershipAtEx
 }
 
 export function summarizeDeterministicFinance(config: ScenarioConfig): DeterministicFinanceSummary {
-  const currentPostMoney = calculatePostMoney(config.currentPreMoney, config.currentRoundSize);
+  const financing = getCurrentFinancing(config);
+  const currentPostMoney = financing.pricedPostMoney;
   const currentInvestorOwnership = getCurrentInvestorOwnershipEstimate(config);
   const nextStageIndex = Math.min(stageOrder.length - 1, getStageIndex(config.currentStage) + 1);
   const nextStage = stageOrder[nextStageIndex] as FundingStage;
@@ -215,15 +213,17 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
       path.snapshot,
       scenario.exitValue,
       getEmployeeExerciseCost(config, path.snapshot, scenario.exitValue),
+      config.preferred,
     );
 
     return {
       label: scenario.label,
       exitValue: scenario.exitValue,
       founderProceeds: waterfall.founderPayout + path.snapshot.realizedFounderSecondary,
-      employeeProceeds: waterfall.employeeGrossPayout + path.snapshot.realizedEmployeeSecondary,
+      employeeProceeds: waterfall.employeeNetPayout + path.snapshot.realizedEmployeeSecondary,
       investorProceeds: waterfall.investorPayout,
       preferredConverted: waterfall.preferredConverted,
+      preferredStructure: waterfall.preferredStructure,
     };
   });
 
@@ -242,7 +242,7 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
           ? "ownership = new_investment / post_money"
           : config.currentRoundKind === "safe_post_money"
             ? "ownership = safe_investment / post_money_cap"
-          : "effective_ownership = note_principal / (cap + principal)",
+            : "effective_ownership ~= note_principal / (note_cap + round_raise)",
       value: currentInvestorOwnership,
       note: "For unpriced rounds this is a forward ownership estimate, not a final issued-share count yet.",
       format: "percent",
@@ -271,6 +271,7 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
   ];
 
   const warnings = [
+    ...financing.warnings,
     benchmarkNextStepUp < 1.25
       ? "Median step-up to the next stage is thin. This path is vulnerable to flat or down rounds."
       : "Median next-round step-up is healthy enough that dilution pressure is not doing all the work.",
