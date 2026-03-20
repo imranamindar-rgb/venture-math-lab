@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: venture-math-lab
+    runtime: node
+    rootDir: Documents/GPT_Coding/venture-math-lab
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
