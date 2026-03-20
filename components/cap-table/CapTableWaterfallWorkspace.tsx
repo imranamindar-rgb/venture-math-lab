@@ -73,40 +73,40 @@ function WaterfallCard({
                 {scenario.preferredStructure}
               </div>
             </div>
-            <dl className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
+            <dl className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Founder</dt>
-                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {formatCurrency(scenario.founderProceeds)}
                 </dd>
               </div>
-              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Employee</dt>
-                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {formatCurrency(scenario.employeeProceeds)}
                 </dd>
               </div>
-              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Modeled investor</dt>
-                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {formatCurrency(scenario.investorProceeds)}
                 </dd>
               </div>
-              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Prior preferred</dt>
-                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {formatCurrency(scenario.priorInvestorProceeds)}
                 </dd>
               </div>
-              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Note payout</dt>
-                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {formatCurrency(scenario.noteProceeds)}
                 </dd>
               </div>
-              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
                 <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">SAFE payout</dt>
-                <dd className="mt-2 min-w-0 font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {formatCurrency(scenario.safeProceeds)}
                 </dd>
               </div>
