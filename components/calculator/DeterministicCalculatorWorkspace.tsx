@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { DealReturnHeatmap } from "@/components/charts/DealReturnHeatmap";
 import { OwnershipChart } from "@/components/charts/OwnershipChart";
 import { LiquidationDeadZoneChart } from "@/components/charts/LiquidationDeadZoneChart";
 import { ActiveScenarioPanel } from "@/components/workspace/ActiveScenarioPanel";
@@ -271,6 +272,13 @@ export function DeterministicCalculatorWorkspace() {
         <LiquidationDeadZoneChart
           data={summary.liquidationDeadZone.points}
           deadZoneEndsAt={summary.liquidationDeadZone.deadZoneEndsAt}
+        />
+
+        <DealReturnHeatmap
+          anchorExitValue={summary.dealReturnHeatmap.anchorExitValue}
+          exitValues={summary.dealReturnHeatmap.exitValues}
+          years={summary.dealReturnHeatmap.years}
+          cells={summary.dealReturnHeatmap.cells}
         />
 
         <ActiveScenarioPanel

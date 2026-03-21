@@ -63,6 +63,23 @@ export interface FundLossConcentrationSummary {
   quadrantProbabilities: ThresholdMetric[];
 }
 
+export interface ReserveConstraintCell {
+  fundSize: number;
+  reserveRatio: number;
+  netTVPIMedian: number;
+  modeledCompanyCount: number;
+  topQuartileProbability: number;
+  feasible: boolean;
+}
+
+export interface ReserveConstraintMap {
+  fundSizes: number[];
+  reserveRatios: number[];
+  cells: ReserveConstraintCell[];
+  recommendedCell: ReserveConstraintCell | null;
+  note: string;
+}
+
 export interface FundConstructionSummary {
   managementFees: number;
   investableCapital: number;
@@ -90,6 +107,7 @@ export interface FundConstructionSummary {
   feeCarrySchedule: FundFeeCarryScheduleRow[];
   strategyMatrix: FundStrategyMatrixRow[];
   sensitivity: FundTornadoBar[];
+  reserveConstraintMap: ReserveConstraintMap;
   lossConcentration: FundLossConcentrationSummary;
   warnings: string[];
 }
@@ -166,6 +184,21 @@ function medianNumber(values: number[]) {
 interface FundSummaryOptions {
   includeExtensions?: boolean;
   simulationCountOverride?: number;
+}
+
+function minimumDiversificationTarget(stage: FundingStage) {
+  if (stage === "pre_seed" || stage === "seed") {
+    return 20;
+  }
+  if (stage === "series_a") {
+    return 15;
+  }
+  return 10;
+}
+
+function roundFundSize(value: number) {
+  const increment = value >= 250_000_000 ? 25_000_000 : value >= 100_000_000 ? 10_000_000 : 5_000_000;
+  return Math.max(increment, Math.round(value / increment) * increment);
 }
 
 export function getDefaultFundConstructionConfig(): FundConstructionConfig {
@@ -528,8 +561,19 @@ export function summarizeFundConstruction(
     feeCarrySchedule,
     strategyMatrix: options.includeExtensions === false ? [] : buildStrategyMatrix(config),
     sensitivity: options.includeExtensions === false ? [] : buildSensitivityBars(config),
+    reserveConstraintMap: options.includeExtensions === false ? emptyReserveConstraintMap() : buildReserveConstraintMap(config),
     lossConcentration,
     warnings,
+  };
+}
+
+function emptyReserveConstraintMap(): ReserveConstraintMap {
+  return {
+    fundSizes: [],
+    reserveRatios: [],
+    cells: [],
+    recommendedCell: null,
+    note: "Constraint map is disabled for this lightweight summary run.",
   };
 }
 
@@ -662,6 +706,69 @@ function buildSensitivityBars(config: FundConstructionConfig): FundTornadoBar[] 
         Math.max(Math.abs(right.lowerDelta), Math.abs(right.upperDelta)) -
         Math.max(Math.abs(left.lowerDelta), Math.abs(left.upperDelta)),
     );
+}
+
+function buildReserveConstraintMap(config: FundConstructionConfig): ReserveConstraintMap {
+  const sampleCount = Math.min(900, config.simulationCount);
+  const reserveRatios = [0.15, 0.25, 0.35, 0.45, 0.55];
+  const fundSizes = Array.from(
+    new Set([0.6, 0.8, 1, 1.25, 1.5].map((multiple) => roundFundSize(config.fundSize * multiple))),
+  ).sort((left, right) => left - right);
+  const diversificationTarget = minimumDiversificationTarget(config.stage);
+
+  const cells: ReserveConstraintCell[] = [];
+
+  for (const fundSize of fundSizes) {
+    for (const reserveRatio of reserveRatios) {
+      const summary = summarizeFundConstruction(
+        sanitizeFundConstructionConfig({
+          ...config,
+          fundSize,
+          reserveRatio,
+        }),
+        {
+          includeExtensions: false,
+          simulationCountOverride: sampleCount,
+        },
+      );
+
+      cells.push({
+        fundSize,
+        reserveRatio,
+        netTVPIMedian: summary.netTVPIMedian,
+        modeledCompanyCount: summary.modeledCompanyCount,
+        topQuartileProbability: summary.topQuartileProbability,
+        feasible:
+          summary.modeledCompanyCount >= diversificationTarget &&
+          (!config.followOnStrategy || summary.followOnCapacity > 0),
+      });
+    }
+  }
+
+  const recommendedCell =
+    [...cells]
+      .sort((left, right) => {
+        const leftScore =
+          left.netTVPIMedian +
+          left.topQuartileProbability * 0.6 -
+          Math.max(0, diversificationTarget - left.modeledCompanyCount) * 0.08 +
+          (left.feasible ? 0.4 : -0.4);
+        const rightScore =
+          right.netTVPIMedian +
+          right.topQuartileProbability * 0.6 -
+          Math.max(0, diversificationTarget - right.modeledCompanyCount) * 0.08 +
+          (right.feasible ? 0.4 : -0.4);
+        return rightScore - leftScore;
+      })
+      .at(0) ?? null;
+
+  return {
+    fundSizes,
+    reserveRatios,
+    cells,
+    recommendedCell,
+    note: `Cells show median net TVPI and supported company count. Feasible cells meet the ${diversificationTarget}-company diversification floor for this stage and preserve follow-on capacity when follow-on is enabled.`,
+  };
 }
 
 export function sanitizeFundConstructionConfig(config: FundConstructionConfig): FundConstructionConfig {

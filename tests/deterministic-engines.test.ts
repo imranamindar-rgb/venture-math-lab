@@ -27,6 +27,9 @@ describe("deterministic venture engines", () => {
     expect(summary.waterfallScenarios).toHaveLength(4);
     expect(summary.liquidationDeadZone.points.length).toBeGreaterThan(5);
     expect(summary.liquidationDeadZone.deadZoneEndsAt).toBeGreaterThan(0);
+    expect(summary.dealReturnHeatmap.cells).toHaveLength(
+      summary.dealReturnHeatmap.exitValues.length * summary.dealReturnHeatmap.years.length,
+    );
     expect(summary.optionPoolShuffle.preMoneyFounderOwnership).toBeLessThan(summary.optionPoolShuffle.postMoneyFounderOwnership);
   });
 

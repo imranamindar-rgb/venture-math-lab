@@ -26,7 +26,11 @@ export function LiquidationDeadZoneChart({
   deadZoneEndsAt: number;
 }) {
   return (
-    <div className="overflow-hidden rounded-panel border border-border/70 bg-white p-4">
+    <div
+      className="overflow-hidden rounded-panel border border-border/70 bg-white p-4"
+      role="img"
+      aria-label="Liquidation dead-zone chart showing founder net proceeds and investor proceeds across exit values."
+    >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-heading text-lg font-semibold">Liquidation Dead-Zone</h3>
         <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Founder vs preference overhang</p>

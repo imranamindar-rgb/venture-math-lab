@@ -9,7 +9,7 @@ import {
 describe("fund construction engine", () => {
   it("calculates investable capital after fee drag and reserve budgeting", () => {
     const config = getDefaultFundConstructionConfig();
-    const summary = summarizeFundConstruction(config);
+    const summary = summarizeFundConstruction(config, { includeExtensions: false });
 
     expect(summary.managementFees).toBeCloseTo(20_000_000, 6);
     expect(summary.investableCapital).toBeCloseTo(80_000_000, 6);
@@ -22,8 +22,8 @@ describe("fund construction engine", () => {
     config.simulationCount = 2_000;
     config.seed = 77;
 
-    const first = summarizeFundConstruction(config);
-    const second = summarizeFundConstruction(config);
+    const first = summarizeFundConstruction(config, { includeExtensions: false });
+    const second = summarizeFundConstruction(config, { includeExtensions: false });
 
     expect(first.netTVPIMedian).toBe(second.netTVPIMedian);
     expect(first.oneCompanyReturnsFundProbability).toBe(second.oneCompanyReturnsFundProbability);
@@ -59,6 +59,8 @@ describe("fund construction engine", () => {
     expect(summary.feeCarrySchedule).toHaveLength(config.fundLifeYears + 1);
     expect(summary.strategyMatrix).toHaveLength(3);
     expect(summary.sensitivity.length).toBeGreaterThan(3);
+    expect(summary.reserveConstraintMap.cells.length).toBeGreaterThan(10);
+    expect(summary.reserveConstraintMap.recommendedCell).not.toBeNull();
     expect(summary.lossConcentration.quadrantProbabilities).toHaveLength(4);
   });
 });

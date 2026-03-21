@@ -20,7 +20,11 @@ export function ProbabilityChart({
   data: ThresholdMetric[];
 }) {
   return (
-    <div className="overflow-hidden rounded-panel border border-border/70 bg-white p-4">
+    <div
+      className="overflow-hidden rounded-panel border border-border/70 bg-white p-4"
+      role="img"
+      aria-label={`${title} probability chart`}
+    >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-heading text-lg font-semibold">{title}</h3>
         <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Risk layers</p>

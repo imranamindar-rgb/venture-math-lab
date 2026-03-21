@@ -28,7 +28,11 @@ export function TermSheetComparatorChart({
   formatter: (value: number) => string;
 }) {
   return (
-    <div className="overflow-hidden rounded-panel border border-border/70 bg-white p-4">
+    <div
+      className="overflow-hidden rounded-panel border border-border/70 bg-white p-4"
+      role="img"
+      aria-label={`${title} term-sheet comparison chart`}
+    >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-heading text-lg font-semibold">{title}</h3>
         <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Term sheet A/B</p>

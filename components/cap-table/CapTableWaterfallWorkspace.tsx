@@ -3,9 +3,11 @@
 import { useMemo } from "react";
 
 import { ActiveScenarioPanel } from "@/components/workspace/ActiveScenarioPanel";
+import { CapTableEvolutionSlider } from "@/components/cap-table/CapTableEvolutionSlider";
 import { Card } from "@/components/ui/Card";
 import { formatCompactNumber, formatCurrency, formatPercent } from "@/lib/format";
 import { summarizeCapTableWaterfall } from "@/lib/engines/cap-table-waterfall/analysis";
+import { summarizeDeterministicFinance } from "@/lib/engines/deterministic-finance";
 import { useScenarioStore } from "@/lib/state/scenario-store";
 
 function PositionTable({
@@ -205,6 +207,7 @@ function WaterfallCard({
 export function CapTableWaterfallWorkspace() {
   const active = useScenarioStore((state) => state.active);
   const summary = useMemo(() => summarizeCapTableWaterfall(active), [active]);
+  const deterministic = useMemo(() => summarizeDeterministicFinance(active), [active]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -225,6 +228,8 @@ export function CapTableWaterfallWorkspace() {
             totalShares={summary.convertedFullyDilutedShares}
           />
         </div>
+
+        <CapTableEvolutionSlider ownershipSeries={deterministic.ownershipSeries} roundProjection={deterministic.roundProjection} />
 
           {summary.safeConversionBridge ? (
             <Card>

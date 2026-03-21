@@ -2,6 +2,7 @@ services:
   - type: web
     name: venture-math-lab
     runtime: node
+    autoDeployTrigger: commit
     buildCommand: npm install && npm run build
     startCommand: npm run start
     healthCheckPath: /health

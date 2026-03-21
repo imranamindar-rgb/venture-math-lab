@@ -39,7 +39,11 @@ export function FundTimelineChart({
   });
 
   return (
-    <div className="overflow-hidden rounded-panel border border-border/70 bg-white p-4">
+    <div
+      className="overflow-hidden rounded-panel border border-border/70 bg-white p-4"
+      role="img"
+      aria-label={`J-curve timeline chart${benchmark ? ` with ${benchmark.label} benchmark overlay` : ""}`}
+    >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-heading text-lg font-semibold">J-Curve Timeline</h3>
         <p className="text-xs uppercase tracking-[0.22em] text-slate-500">

@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { SupportBadge } from "@/components/ui/SupportBadge";
 import { analyzeScenario } from "@/lib/scenario-diagnostics";
 import { buildScenarioCsv } from "@/lib/export";
+import { buildScenarioReportPath, buildScenarioReportUrl } from "@/lib/share";
 import { formatCurrency } from "@/lib/format";
 
 interface PrimaryAction {
@@ -53,6 +54,7 @@ export function ActiveScenarioPanel({
     importScenarioFile,
   } = useScenarioStore();
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [snapshotName, setSnapshotName] = useState("");
   const [showEditor, setShowEditor] = useState(!defaultCollapsed);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -71,6 +73,7 @@ export function ActiveScenarioPanel({
     return hintWhenReady;
   }, [hintWhenReady, importStatus]);
   const diagnostics = useMemo(() => analyzeScenario(active), [active]);
+  const reportHref = useMemo(() => buildScenarioReportPath(active), [active]);
   const lastModifiedLabel = useMemo(
     () =>
       new Intl.DateTimeFormat("en-US", {
@@ -119,6 +122,19 @@ export function ActiveScenarioPanel({
     }
   };
 
+  const handleCopyShareLink = async () => {
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildScenarioReportUrl(active, window.location.origin));
+      setShareStatus("Report link copied.");
+    } catch {
+      setShareStatus("Copy failed. Open the report and copy the URL directly.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden">
@@ -153,7 +169,12 @@ export function ActiveScenarioPanel({
             <p className="mt-3 text-sm leading-6 text-slate-600">{diagnostics.summary}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant={showEditor ? "secondary" : "primary"} onClick={() => setShowEditor((current) => !current)}>
+            <Button
+              variant={showEditor ? "secondary" : "primary"}
+              aria-expanded={showEditor}
+              aria-controls="active-scenario-editor"
+              onClick={() => setShowEditor((current) => !current)}
+            >
               {showEditor ? "Hide scenario controls" : "Adjust scenario controls"}
             </Button>
             <p className="text-sm text-slate-500">
@@ -179,11 +200,13 @@ export function ActiveScenarioPanel({
               </div>
             </div>
           ) : (
-            <ScenarioEditor
-              config={active}
-              onChange={updateActive}
-              onNestedChange={(key, patch) => updateNested("active", key, patch)}
-            />
+            <div id="active-scenario-editor">
+              <ScenarioEditor
+                config={active}
+                onChange={updateActive}
+                onNestedChange={(key, patch) => updateNested("active", key, patch)}
+              />
+            </div>
           )}
         </div>
       </Card>
@@ -217,11 +240,14 @@ export function ActiveScenarioPanel({
           <Button variant="secondary" onClick={handleExportCsv}>
             Export CSV
           </Button>
+          <Button variant="secondary" onClick={handleCopyShareLink}>
+            Copy report link
+          </Button>
           <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
             Import JSON
           </Button>
           <Link
-            href="/report"
+            href={reportHref}
             className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
           >
             Open report
@@ -240,6 +266,7 @@ export function ActiveScenarioPanel({
           . The engine normalizes the mix if it is not exactly 100%.
         </p>
         <p className="mt-2 text-sm text-slate-500">{importHint}</p>
+        {shareStatus ? <p className="mt-2 text-sm text-slate-500">{shareStatus}</p> : null}
         <p className="mt-2 text-sm text-slate-500">Scenario state synced across modules. Last edit {lastModifiedLabel}.</p>
         {diagnostics.issues.length > 0 ? (
           <div className="mt-4 space-y-2">

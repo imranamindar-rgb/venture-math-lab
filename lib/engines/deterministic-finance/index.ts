@@ -79,6 +79,23 @@ export interface LiquidationDeadZoneSummary {
   points: LiquidationDeadZonePoint[];
 }
 
+export interface DealReturnHeatmapCell {
+  yearsToExit: number;
+  exitValue: number;
+  investorProceeds: number;
+  investorMoic: number;
+  investorIrr: number;
+  founderNet: number;
+  preferredStructure: string;
+}
+
+export interface DealReturnHeatmapSummary {
+  anchorExitValue: number;
+  exitValues: number[];
+  years: number[];
+  cells: DealReturnHeatmapCell[];
+}
+
 export interface OptionPoolShuffleIllustration {
   preMoneyFounderOwnership: number;
   postMoneyFounderOwnership: number;
@@ -111,6 +128,7 @@ export interface DeterministicFinanceSummary {
   roundProjection: DeterministicRoundProjection[];
   waterfallScenarios: DeterministicWaterfallScenario[];
   liquidationDeadZone: LiquidationDeadZoneSummary;
+  dealReturnHeatmap: DealReturnHeatmapSummary;
   optionPoolShuffle: OptionPoolShuffleIllustration;
   warnings: string[];
 }
@@ -369,6 +387,52 @@ function buildLiquidationDeadZone(
   };
 }
 
+function buildDealReturnHeatmap(config: ScenarioConfig, anchorExitValue: number): DealReturnHeatmapSummary {
+  const snapshot = createInitialCapTable(config);
+  const financing = getCurrentFinancing(config);
+  const exitValues = [0.5, 0.75, 1, 1.5, 2, 3, 5, 8, 12].map((multiple) => Math.max(500_000, anchorExitValue * multiple));
+  const years = [1, 2, 3, 4, 5, 6, 7, 8, 10];
+  const investorCapitalAtRisk = Math.max(1, financing.modeledInvestorCheck);
+
+  const exitSnapshots = exitValues.map((exitValue) => {
+    const waterfall = computeWaterfall(
+      snapshot,
+      exitValue,
+      getEmployeeExerciseCost(config, snapshot, exitValue),
+      config.preferred,
+    );
+
+    return {
+      exitValue,
+      investorProceeds: waterfall.investorPayout,
+      founderNet: waterfall.founderPayout + snapshot.realizedFounderSecondary,
+      preferredStructure: waterfall.preferredStructure,
+    };
+  });
+
+  return {
+    anchorExitValue,
+    exitValues,
+    years,
+    cells: years.flatMap((yearsToExit) =>
+      exitSnapshots.map((point) => {
+        const investorMoic = point.investorProceeds / investorCapitalAtRisk;
+        const investorIrr = investorMoic > 0 ? Math.pow(investorMoic, 1 / yearsToExit) - 1 : -1;
+
+        return {
+          yearsToExit,
+          exitValue: point.exitValue,
+          investorProceeds: point.investorProceeds,
+          investorMoic,
+          investorIrr,
+          founderNet: point.founderNet,
+          preferredStructure: point.preferredStructure,
+        };
+      }),
+    ),
+  };
+}
+
 export function summarizeDeterministicFinance(config: ScenarioConfig): DeterministicFinanceSummary {
   const financing = getCurrentFinancing(config);
   const currentPostMoney = financing.pricedPostMoney;
@@ -492,6 +556,7 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
     roundProjection: path.roundProjection,
     waterfallScenarios,
     liquidationDeadZone: buildLiquidationDeadZone(config, path.snapshot, path.terminalPostMoney, returnTheFundExit),
+    dealReturnHeatmap: buildDealReturnHeatmap(config, Math.max(currentPostMoney, getReferencePostMoney(config))),
     optionPoolShuffle: buildOptionPoolShuffleIllustration(config),
     warnings,
   };

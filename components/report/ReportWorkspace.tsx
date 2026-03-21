@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { useScenarioStore } from "@/lib/state/scenario-store";
@@ -11,6 +11,8 @@ import { SupportBadge } from "@/components/ui/SupportBadge";
 import { buildScenarioCsv, buildScenarioMarkdown } from "@/lib/export";
 import { formatCurrency, formatMultiple, formatPercent } from "@/lib/format";
 import { buildScenarioBasePayload, buildScenarioReportPayload } from "@/lib/reporting";
+import { buildScenarioReportUrl, decodeScenarioFromShare, getEncodedScenarioFromLocation } from "@/lib/share";
+import { ScenarioConfig } from "@/lib/sim/types";
 
 function downloadCsv(filename: string, payload: string) {
   const blob = new Blob([payload], { type: "text/csv;charset=utf-8" });
@@ -35,34 +37,101 @@ function downloadText(filename: string, payload: string, type = "text/plain;char
 export function ReportWorkspace() {
   const active = useScenarioStore((state) => state.active);
   const hasHydrated = useScenarioStore((state) => state.hasHydrated);
+  const updateActive = useScenarioStore((state) => state.updateActive);
   const { run, summary, loading } = useSimulationRunner();
+  const [sharedConfig, setSharedConfig] = useState<ScenarioConfig | null>(null);
+  const [shareStatus, setShareStatus] = useState<"checking" | "active" | "shared" | "error">("checking");
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!hasHydrated) {
+    if (typeof window === "undefined") {
       return;
     }
-    run(active);
-  }, [active, hasHydrated, run]);
 
-  const basePayload = useMemo(() => (hasHydrated ? buildScenarioBasePayload(active) : null), [active, hasHydrated]);
-  const payload = useMemo(() => (summary ? buildScenarioReportPayload(active, summary) : null), [active, summary]);
+    const encoded = getEncodedScenarioFromLocation(window.location);
+    if (!encoded) {
+      setShareStatus("active");
+      return;
+    }
 
-  if (!hasHydrated) {
+    const decoded = decodeScenarioFromShare(encoded);
+    if (decoded.ok) {
+      setSharedConfig(decoded.config);
+      setShareStatus("shared");
+      return;
+    }
+
+    setShareError(decoded.error);
+    setShareStatus("error");
+  }, []);
+
+  const reportConfig = shareStatus === "shared" && sharedConfig ? sharedConfig : shareStatus === "active" && hasHydrated ? active : null;
+
+  useEffect(() => {
+    if (!reportConfig) {
+      return;
+    }
+    run(reportConfig);
+  }, [reportConfig, run]);
+
+  const basePayload = useMemo(() => (reportConfig ? buildScenarioBasePayload(reportConfig) : null), [reportConfig]);
+  const payload = useMemo(
+    () => (summary && reportConfig ? buildScenarioReportPayload(reportConfig, summary) : null),
+    [reportConfig, summary],
+  );
+
+  const handleCopyShareLink = async () => {
+    if (typeof window === "undefined" || typeof navigator === "undefined" || !reportConfig) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildScenarioReportUrl(reportConfig, window.location.origin));
+      setCopyStatus("Share link copied.");
+    } catch {
+      setCopyStatus("Copy failed. Use the browser address bar instead.");
+    }
+  };
+
+  if (shareStatus === "checking" || (shareStatus === "active" && !hasHydrated)) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Card>
           <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Scenario report</p>
           <h1 className="mt-2 font-heading text-4xl font-semibold">Board-ready venture math summary</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-            Loading the saved scenario state before the report runs.
+            Loading the scenario state before the report runs.
           </p>
-          <p className="mt-4 text-sm text-slate-500">Loading saved scenario...</p>
+          <p className="mt-4 text-sm text-slate-500" aria-live="polite">
+            Loading scenario...
+          </p>
         </Card>
       </div>
     );
   }
 
-  if (!basePayload) {
+  if (shareStatus === "error") {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <Card>
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Scenario report</p>
+          <h1 className="mt-2 font-heading text-4xl font-semibold">Board-ready venture math summary</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{shareError}</p>
+          <div className="mt-5">
+            <Link
+              href="/calculator"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white"
+            >
+              Open calculator
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!basePayload || !reportConfig) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Card>
@@ -97,26 +166,50 @@ export function ReportWorkspace() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => downloadCsv(`${active.id}-report.csv`, buildScenarioCsv(active, summary ?? undefined))}>
+          <Button variant="secondary" onClick={handleCopyShareLink}>
+            Copy share link
+          </Button>
+          {shareStatus === "shared" ? (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                updateActive(reportConfig);
+                setCopyStatus("Shared scenario loaded into the live workspace.");
+              }}
+            >
+              Load into workspace
+            </Button>
+          ) : null}
+          <Button
+            variant="secondary"
+            onClick={() => downloadCsv(`${reportConfig.id}-report.csv`, buildScenarioCsv(reportConfig, summary ?? undefined))}
+          >
             Export CSV
           </Button>
           <Button
             variant="secondary"
-            onClick={() => downloadText(`${active.id}-memo.md`, buildScenarioMarkdown(active, summary ?? undefined), "text/markdown;charset=utf-8")}
+            onClick={() =>
+              downloadText(
+                `${reportConfig.id}-memo.md`,
+                buildScenarioMarkdown(reportConfig, summary ?? undefined),
+                "text/markdown;charset=utf-8",
+              )
+            }
           >
             Export Memo
           </Button>
           <Button onClick={() => window.print()}>Print report</Button>
         </div>
       </div>
+      {copyStatus ? <p className="mt-3 text-sm text-slate-500 print:hidden">{copyStatus}</p> : null}
 
       <div className="mt-8 space-y-6 print:mt-0">
         <Card className="print:shadow-none">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Active scenario</p>
-              <h2 className="mt-2 font-heading text-3xl font-semibold">{active.name}</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{active.description}</p>
+              <h2 className="mt-2 font-heading text-3xl font-semibold">{reportConfig.name}</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{reportConfig.description}</p>
             </div>
             <SupportBadge level={diagnostics.supportLevel} label={diagnostics.supportLabel} />
           </div>
@@ -142,6 +235,9 @@ export function ReportWorkspace() {
               <p className="mt-2 font-heading text-2xl font-semibold">{diagnostics.supportLevel}</p>
             </div>
           </div>
+          <p className="mt-4 text-sm text-slate-500">
+            Source: {shareStatus === "shared" ? "self-contained share link" : "active workspace state"}.
+          </p>
         </Card>
 
         <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">

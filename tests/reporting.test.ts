@@ -4,6 +4,7 @@ import { getScenarioPreset } from "@/data/presets";
 import { buildScenarioCsv } from "@/lib/export";
 import { buildComparisonPayload } from "@/lib/reporting";
 import { analyzeScenario } from "@/lib/scenario-diagnostics";
+import { buildScenarioReportPath, decodeScenarioFromShare, encodeScenarioForShare } from "@/lib/share";
 
 describe("reporting and diagnostics", () => {
   it("marks missing instrument terms as unsupported", () => {
@@ -47,5 +48,18 @@ describe("reporting and diagnostics", () => {
     expect(payload.termSheetCurve.length).toBeGreaterThan(5);
     expect(payload.termSheetCurve[0]?.baselineFounderNet).toBeGreaterThanOrEqual(0);
     expect(payload.termSheetCurve[0]?.comparisonInvestorProceeds).toBeGreaterThanOrEqual(0);
+  });
+
+  it("round-trips a self-contained report share payload", () => {
+    const scenario = getScenarioPreset("nvca_standard");
+    const encoded = encodeScenarioForShare(scenario);
+    const decoded = decodeScenarioFromShare(encoded);
+
+    expect(decoded.ok).toBe(true);
+    if (decoded.ok) {
+      expect(decoded.config.id).toBe(scenario.id);
+      expect(decoded.config.controls.seed).toBe(scenario.controls.seed);
+    }
+    expect(buildScenarioReportPath(scenario)).toContain("#scenario=");
   });
 });

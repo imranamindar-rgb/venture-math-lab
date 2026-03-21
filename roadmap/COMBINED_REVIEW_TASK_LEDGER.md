@@ -17,7 +17,7 @@ Status meanings:
 | `CD-2` | Replace discrete exit buckets with continuous Pareto-style terminal exit modeling | `DONE` | Terminal exit sampling now uses a continuous capped Pareto tail with user-visible `paretoAlpha` control and stage-aware shutdown probability. |
 | `CD-3` | Spawn SAFE conversions as distinct shadow series rather than treating them as generic new-round preferred | `DONE` | SAFE and note conversions now create explicit shadow series types and share the priced round's seniority layer. |
 | `CD-4` | Harden financial precision so shares and dollars reconcile at display and test level | `DONE` | Added cent-safe and microshare-safe quantization plus rounded allocation logic for waterfall outputs. |
-| `CD-5` | Make `/report` render deterministically and safely on direct load | `VALIDATED` | Report now hydrates from saved scenario state, renders deterministic sections before Monte Carlo completes, and provides export actions. |
+| `CD-5` | Make `/report` render deterministically and safely on direct load | `DONE` | Report now supports self-contained share links, direct loads from the URL payload, export actions, and optional hydration back into the live workspace. |
 | `CD-6` | Turn `/compare` into a real decision surface with deltas | `VALIDATED` | Compare now renders headline cards, driver deltas, risk-layer deltas, exports, and saved-scenario loading. |
 
 ## High-Priority Improvements
@@ -52,16 +52,16 @@ Status meanings:
 | `F-2` | Option-pool shuffle in founder dollars | `DONE` | Added to the calculator. |
 | `F-3` | Term-sheet A/B comparison | `DONE` | Compare page now includes deterministic A/B outcome curves for founder net and investor proceeds across exit values. |
 | `F-4` | Liquidation dead-zone visualization | `DONE` | Calculator now includes a liquidation dead-zone chart showing founder net and investor proceeds across the exit range with the overhang window shaded. |
-| `F-5` | Cap-table evolution slider | `ROADMAP` | Ownership drift exists, but not a dedicated step slider on the cap-table page. |
+| `F-5` | Cap-table evolution slider | `DONE` | Cap Table now includes a round-by-round slider that steps through deterministic ownership drift and round mechanics. |
 | `F-6` | Down-round SAFE vs priced-round interaction explanation | `DONE` | SAFE bridge now compares cap vs round-price conversion and teaches dilution source explicitly. |
 
 ## VC / LP Feature Gaps
 
 | ID | Task | Status | Disposition |
 | --- | --- | --- | --- |
-| `V-1` | Deal return heatmap by exit value and timing | `ROADMAP` | Not added in this pass. |
+| `V-1` | Deal return heatmap by exit value and timing | `DONE` | Calculator now includes a deal-level heatmap that shows investor MOIC and IRR by exit value and years to exit. |
 | `V-2` | Follow-on strategy modeler with signaling risk | `DONE` | Fund Lab now surfaces a follow-on/signaling-risk strategy matrix that compares TVPI, concentration, return-the-fund odds, and ownership defense. |
-| `V-3` | Reserve-ratio optimizer / fund-size constraint map | `ROADMAP` | Warnings and thresholds exist, but not an optimizer surface. |
+| `V-3` | Reserve-ratio optimizer / fund-size constraint map | `DONE` | Fund Lab now includes a reserve-ratio optimizer that maps fund size against reserve ratio, company count, and top-quartile odds. |
 | `V-4` | IC memo export with assumptions appendix | `DONE` | Report and compare memo exports now include assumptions, support status, and scenario metadata. |
 | `LP-1` | DPI / J-curve timeline | `DONE` | Added to Fund Lab. |
 | `LP-2` | Paid-in / fee schedule by year | `DONE` | Fund Lab now includes a yearly LP fee/carry schedule with fees, paid-in, gross distributions, carry, net distributions, and cumulative net distributions. |
@@ -97,6 +97,11 @@ Status meanings:
 - Founder take-home calculator
 - Option-pool shuffle illustration
 - Fund J-curve / DPI timeline
+- Self-contained report share links
+- Deal return heatmap
+- Reserve-ratio optimizer / fund-size constraint map
+- Cap-table evolution slider
+- Accessibility / mobile hardening pass
 
 ### Already present and re-validated
 
@@ -110,6 +115,6 @@ Status meanings:
 
 ### Still roadmap-scale
 
-- Deal return heatmap by exit value and timing
-- Reserve-ratio optimizer / fund-size constraint map
-- Cap-table evolution slider
+- Full term-sheet recommendation engine beyond A/B charting
+- Deeper LP diligence overlays and benchmark ingestion
+- More advanced classroom / assignment tooling

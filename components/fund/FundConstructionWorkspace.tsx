@@ -10,6 +10,7 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { FundTimelineChart } from "@/components/charts/FundTimelineChart";
 import { HistogramChart } from "@/components/charts/HistogramChart";
 import { ProbabilityChart } from "@/components/charts/ProbabilityChart";
+import { ReserveConstraintMap } from "@/components/charts/ReserveConstraintMap";
 import { TornadoChart } from "@/components/charts/TornadoChart";
 import {
   getDefaultFundConstructionConfig,
@@ -251,6 +252,14 @@ export function FundConstructionWorkspace() {
             valueFormatter={(value) => `${value > 0 ? "+" : ""}${value.toFixed(2)}x`}
           />
         </div>
+
+        <ReserveConstraintMap
+          fundSizes={summary.reserveConstraintMap.fundSizes}
+          reserveRatios={summary.reserveConstraintMap.reserveRatios}
+          cells={summary.reserveConstraintMap.cells}
+          recommendedCell={summary.reserveConstraintMap.recommendedCell}
+          note={summary.reserveConstraintMap.note}
+        />
 
         <div className="grid gap-4 2xl:grid-cols-[1.1fr,0.9fr]">
           <Card>

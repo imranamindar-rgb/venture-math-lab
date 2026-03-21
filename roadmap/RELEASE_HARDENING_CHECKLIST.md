@@ -35,7 +35,7 @@ Do not redeploy as a public-ready product until:
 | RH-02 | Waterfall reconciliation is not explicit enough in the UI | `FIXED LOCALLY` | The UI now shows exit value, allocated waterfall cash, and difference. Validate on live deploy and screenshot review. |
 | RH-03 | Fund Lab defaults teach an under-diversified seed fund by accident | `FIXED LOCALLY` | Defaults and presets were changed to a more credible standard-seed baseline; still validate that framing is prominent enough. |
 | RH-04 | Post-money SAFE dilution source is not taught clearly enough | `FIXED LOCALLY` | SAFE dilution bridge now lives on the cap-table page; validate clarity with founder-first review. |
-| RH-05 | Report page is too fragile on direct load and can appear stuck on “Preparing report…” | `FIXED LOCALLY` | Report now hydrates safely and renders deterministic content before simulation completes. |
+| RH-05 | Report page is too fragile on direct load and can appear stuck on “Preparing report…” | `FIXED LOCALLY` | Report now accepts self-contained share links and direct URL loads instead of depending only on saved local state. |
 | RH-06 | Compare page is not decision-grade yet | `FIXED LOCALLY` | Compare now has a decision matrix, scenario deltas, and saved-scenario loading. Validate UX quality on live deploy. |
 | RH-07 | Quick / Standard / Advanced input disclosure is missing | `FIXED LOCALLY` | Scenario editor now supports Quick, Standard, Advanced, and Legal modes. |
 | RH-08 | Monte Carlo tail distribution is still bucketed rather than true Pareto-style | `FIXED LOCALLY` | Terminal exits now use a continuous Pareto-style tail with visible `paretoAlpha` control. Validate calibration quality on live review. |
@@ -51,7 +51,7 @@ Do not redeploy as a public-ready product until:
 | RH-12 | Return-the-fund needs denominator context | `PENDING` | Show fund size and ownership assumption inline. |
 | RH-13 | Dashboard needs guided teaching path | `PENDING` | Good pedagogy exists, but still reads like a handout instead of a guided flow. |
 | RH-14 | “What do I take home?” founder view | `FIXED LOCALLY` | Calculator now includes a custom exit-value take-home panel for founder, employee, modeled investor, and prior investors. |
-| RH-15 | Term-sheet A/B comparison | `PENDING` | Must compare founder and investor outcomes under two term sheets. |
+| RH-15 | Term-sheet A/B comparison | `FIXED LOCALLY` | Compare now renders founder-net and investor-proceeds A/B curves across deterministic exit values. |
 | RH-16 | Confidence intervals / convergence diagnostics | `FIXED LOCALLY` | Batch-estimated 95% confidence intervals are now visible in simulation and report surfaces. |
 | RH-17 | Fixed random seed control visible in UI/export | `FIXED LOCALLY` | Seed is visible in advanced controls and report output. Validate whether the UI prominence is sufficient. |
 | RH-18 | CSV export should include full parameter state and simulation metadata | `FIXED LOCALLY` | CSV now includes flattened scenario parameter state plus simulation metadata. |
@@ -92,6 +92,7 @@ These should stay on the list, but not be accepted blindly.
 | RH-36 | Dashboard headline is visually buried | `FIXED LOCALLY` | Dashboard now opens on answer cards and threshold takeaways before controls. Still validate narrative hierarchy on live review. |
 | RH-37 | Some pages still rely on dense expert terminology too early | `FIXED LOCALLY` | Answer-first defaults and hidden expert controls reduce early jargon load. Validate copy quality in founder testing. |
 | RH-38 | Calculator and simulator still repeat too much input surface across modules | `FIXED LOCALLY` | The repeated scenario editor no longer dominates first-run pages because it starts collapsed. Validate that the answer layer clearly wins visually. |
+| RH-39 | Mobile navigation, keyboard focus, and touch help affordances are too weak | `FIXED LOCALLY` | Added mobile navigation, skip link, stronger focus states, click/focus info tips, and chart semantics. |
 
 ## Release-Blocking Validation Work
 
@@ -124,10 +125,8 @@ These are mandatory before the next serious release candidate.
 
 ### Workstream 1: Trust Layer
 
-1. Finish and validate cap-table waterfall reconciliation.
-2. Make report deterministic and standalone.
-3. Make compare genuinely analytical.
-4. Tighten SAFE/note support claims to match actual fidelity.
+1. Validate the live deployment of the now-standalone report and the new mobile/accessibility surfaces.
+2. Keep SAFE/note support claims tight to the exact fidelity the engine provides.
 
 ### Workstream 2: Founder Onboarding
 
