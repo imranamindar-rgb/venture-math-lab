@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 
 import { ActiveScenarioPanel } from "@/components/workspace/ActiveScenarioPanel";
 import { CapTableEvolutionSlider } from "@/components/cap-table/CapTableEvolutionSlider";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { formatCompactNumber, formatCurrency, formatPercent } from "@/lib/format";
 import { summarizeCapTableWaterfall } from "@/lib/engines/cap-table-waterfall/analysis";
@@ -206,8 +208,52 @@ function WaterfallCard({
 
 export function CapTableWaterfallWorkspace() {
   const active = useScenarioStore((state) => state.active);
-  const summary = useMemo(() => summarizeCapTableWaterfall(active), [active]);
-  const deterministic = useMemo(() => summarizeDeterministicFinance(active), [active]);
+  const setActivePreset = useScenarioStore((state) => state.setActivePreset);
+  const capTableState = useMemo(() => {
+    try {
+      return {
+        summary: summarizeCapTableWaterfall(active),
+        deterministic: summarizeDeterministicFinance(active),
+        error: null as string | null,
+      };
+    } catch (error) {
+      return {
+        summary: null,
+        deterministic: null,
+        error:
+          error instanceof Error
+            ? error.message
+            : "The cap-table engine hit an unexpected browser-side error while reading the active scenario.",
+      };
+    }
+  }, [active]);
+
+  if (!capTableState.summary || !capTableState.deterministic) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Card>
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Cap table and waterfall output</p>
+          <h2 className="mt-2 font-heading text-2xl font-semibold">This scenario could not render in the cap-table engine</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            The active scenario hit a client-side exception before the cap-table view could finish rendering. Reset to
+            the standard preset or return to the calculator and reopen the page from there.
+          </p>
+          <p className="mt-3 text-sm text-slate-500">{capTableState.error}</p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button onClick={() => setActivePreset("nvca_standard")}>Reset to standard scenario</Button>
+            <Link
+              href="/calculator"
+              className="inline-flex items-center justify-center rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-amber-50"
+            >
+              Open calculator
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  const { summary, deterministic } = capTableState;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
