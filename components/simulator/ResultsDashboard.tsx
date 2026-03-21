@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { HistogramChart } from "@/components/charts/HistogramChart";
 import { OwnershipChart } from "@/components/charts/OwnershipChart";
 import { ProbabilityChart } from "@/components/charts/ProbabilityChart";
@@ -18,7 +19,10 @@ function MetricCard({
 }) {
   return (
     <Card className="min-w-0 overflow-hidden p-5">
-      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <div className="flex items-center gap-2">
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+        <InfoTip content={caption} label={`${label} explanation`} />
+      </div>
       <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight text-foreground [overflow-wrap:anywhere]">
         {value}
       </p>

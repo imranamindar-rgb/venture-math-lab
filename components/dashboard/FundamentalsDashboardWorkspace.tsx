@@ -7,6 +7,7 @@ import { stagePresets } from "@/data/presets";
 import { calculateInvestorOwnership, calculatePostMoney, calculateRequiredExitValue } from "@/lib/engines/deterministic-finance";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { HistogramChart } from "@/components/charts/HistogramChart";
 import { OwnershipChart } from "@/components/charts/OwnershipChart";
@@ -24,7 +25,10 @@ function MetricCard({
 }) {
   return (
     <Card className="min-w-0 overflow-hidden p-5">
-      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <div className="flex items-center gap-2">
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+        <InfoTip content={caption} label={`${label} explanation`} />
+      </div>
       <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
         {value}
       </p>
@@ -98,7 +102,10 @@ export function FundamentalsDashboardWorkspace() {
           <h2 className="font-heading text-xl font-semibold">Live teaching controls</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
             <label className="space-y-2 text-sm">
-              <span className="font-heading font-semibold text-foreground">Stage</span>
+              <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                <span>Stage</span>
+                <InfoTip content="Stage anchors benchmark valuation, round size, dilution expectations, and the default venture profile used in this teaching view." label="Stage help" />
+              </span>
               <select
                 value={stage}
                 onChange={(event) => setStage(event.target.value as FundingStage)}
@@ -112,7 +119,10 @@ export function FundamentalsDashboardWorkspace() {
               </select>
             </label>
             <label className="space-y-2 text-sm">
-              <span className="font-heading font-semibold text-foreground">Investor check</span>
+              <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                <span>Investor check</span>
+                <InfoTip content="Capital the new investor puts into the company in this example. Combined with valuation, it determines immediate ownership." label="Investor check help" />
+              </span>
               <MoneyInput
                 value={checkSize}
                 onValueChange={setCheckSize}
@@ -120,7 +130,10 @@ export function FundamentalsDashboardWorkspace() {
               />
             </label>
             <label className="space-y-2 text-sm">
-              <span className="font-heading font-semibold text-foreground">Target ownership</span>
+              <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                <span>Target ownership</span>
+                <InfoTip content="The ownership percentage the new investor wants to hold immediately after the round closes. Investors often back into valuation from this target." label="Target ownership help" />
+              </span>
               <input
                 type="number"
                 step="0.01"
@@ -130,7 +143,10 @@ export function FundamentalsDashboardWorkspace() {
               />
             </label>
             <label className="space-y-2 text-sm">
-              <span className="font-heading font-semibold text-foreground">Fund size</span>
+              <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                <span>Fund size</span>
+                <InfoTip content="Total venture fund size used for return-the-fund math. Larger funds need much larger company exits to matter." label="Fund size help" />
+              </span>
               <MoneyInput
                 value={fundSize}
                 onValueChange={setFundSize}
@@ -138,7 +154,10 @@ export function FundamentalsDashboardWorkspace() {
               />
             </label>
             <label className="space-y-2 text-sm">
-              <span className="font-heading font-semibold text-foreground">Years to exit</span>
+              <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                <span>Years to exit</span>
+                <InfoTip content="Holding period used for the simple IRR example. The same multiple over more years produces a lower annualized IRR." label="Years to exit help" />
+              </span>
               <input
                 type="number"
                 min={1}

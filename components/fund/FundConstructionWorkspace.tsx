@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { stageOrder, FundingStage, MarketOverlay, SectorOverlay } from "@/lib/sim/types";
 import { Card } from "@/components/ui/Card";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { HistogramChart } from "@/components/charts/HistogramChart";
 import { ProbabilityChart } from "@/components/charts/ProbabilityChart";
@@ -31,7 +32,10 @@ export function FundConstructionWorkspace() {
 
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
             <label className="space-y-2 text-sm">
-              <span className="font-heading font-semibold text-foreground">Fund size</span>
+              <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                <span>Fund size</span>
+                <InfoTip content="Total committed capital in the venture fund. This drives fee drag, investable capital, and return-the-fund thresholds." label="Fund size help" />
+              </span>
               <MoneyInput
                 value={config.fundSize}
                 onValueChange={(value) => setConfig((current) => ({ ...current, fundSize: value }))}
@@ -39,7 +43,10 @@ export function FundConstructionWorkspace() {
               />
             </label>
             <label className="space-y-2 text-sm">
-              <span className="font-heading font-semibold text-foreground">Stage focus</span>
+              <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                <span>Stage focus</span>
+                <InfoTip content="The stage where the fund primarily invests. Stage focus changes ownership targets, valuations, and likely outcome distributions." label="Stage focus help" />
+              </span>
               <select
                 value={config.stage}
                 onChange={(event) => setConfig((current) => ({ ...current, stage: event.target.value as FundingStage }))}
@@ -53,7 +60,10 @@ export function FundConstructionWorkspace() {
               </select>
             </label>
             <label className="space-y-2 text-sm">
-              <span className="font-heading font-semibold text-foreground">Initial check size</span>
+              <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                <span>Initial check size</span>
+                <InfoTip content="Capital deployed into each new portfolio company before any follow-on investing." label="Initial check size help" />
+              </span>
               <MoneyInput
                 value={config.initialCheckSize}
                 onValueChange={(value) => setConfig((current) => ({ ...current, initialCheckSize: value }))}
@@ -61,7 +71,10 @@ export function FundConstructionWorkspace() {
               />
             </label>
             <label className="space-y-2 text-sm">
-              <span className="font-heading font-semibold text-foreground">Follow-on check size</span>
+              <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                <span>Follow-on check size</span>
+                <InfoTip content="Capital reserved for later rounds when the fund decides to keep backing a winner." label="Follow-on check size help" />
+              </span>
               <MoneyInput
                 value={config.followOnCheckSize}
                 onValueChange={(value) => setConfig((current) => ({ ...current, followOnCheckSize: value }))}
