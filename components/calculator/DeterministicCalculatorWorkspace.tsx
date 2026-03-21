@@ -35,7 +35,7 @@ export function DeterministicCalculatorWorkspace() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 xl:grid-cols-[0.95fr,1.35fr]">
+      <div className="grid gap-6 2xl:grid-cols-[0.95fr,1.35fr]">
         <ActiveScenarioPanel
           modeLabel="Deterministic finance engine"
           title="Deal Calculator"
@@ -77,7 +77,7 @@ export function DeterministicCalculatorWorkspace() {
             />
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1.2fr,0.8fr]">
+          <div className="grid gap-4 2xl:grid-cols-[1.2fr,0.8fr]">
             <OwnershipChart data={summary.ownershipSeries} />
             <Card>
               <h3 className="font-heading text-lg font-semibold">Formula notes</h3>
@@ -128,7 +128,7 @@ export function DeterministicCalculatorWorkspace() {
             </div>
           </Card>
 
-          <div className="grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
+          <div className="grid gap-4 2xl:grid-cols-[1.05fr,0.95fr]">
             <Card>
               <h3 className="font-heading text-lg font-semibold">Waterfall checkpoints</h3>
               <div className="mt-4 space-y-3">

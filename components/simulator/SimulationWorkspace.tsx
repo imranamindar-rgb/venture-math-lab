@@ -31,7 +31,7 @@ export function SimulationWorkspace() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 xl:grid-cols-[0.95fr,1.35fr]">
+      <div className="grid gap-6 2xl:grid-cols-[0.95fr,1.35fr]">
         <ActiveScenarioPanel
           modeLabel="Monte Carlo simulation engine"
           title="Monte Carlo Simulator"

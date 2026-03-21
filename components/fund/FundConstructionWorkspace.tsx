@@ -21,7 +21,7 @@ export function FundConstructionWorkspace() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 xl:grid-cols-[0.95fr,1.35fr]">
+      <div className="grid gap-6 2xl:grid-cols-[0.95fr,1.35fr]">
         <Card>
           <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Fund construction lab</p>
           <h1 className="mt-2 font-heading text-4xl font-semibold">Whole-fund venture math</h1>
@@ -165,12 +165,12 @@ export function FundConstructionWorkspace() {
             </Card>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
+          <div className="grid gap-4 2xl:grid-cols-[1.05fr,0.95fr]">
             <HistogramChart title="Net TVPI Distribution" data={summary.netMultipleHistogram} />
             <ProbabilityChart title="Fund Concentration and Outcomes" data={summary.concentrationMetrics} />
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4 2xl:grid-cols-2">
             <Card>
               <h2 className="font-heading text-xl font-semibold">Fund thresholds</h2>
               <dl className="mt-4 space-y-3 text-sm text-slate-700">

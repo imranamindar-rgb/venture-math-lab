@@ -15,7 +15,7 @@ export function OperatorWorkspace() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 xl:grid-cols-[0.95fr,1.35fr]">
+      <div className="grid gap-6 2xl:grid-cols-[0.95fr,1.35fr]">
         <ActiveScenarioPanel
           modeLabel="Operator intelligence layer"
           title="Operator Lab"
@@ -71,7 +71,7 @@ export function OperatorWorkspace() {
             </Card>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
+          <div className="grid gap-4 2xl:grid-cols-[1.05fr,0.95fr]">
             <ProbabilityChart title="Operating Readiness Signals" data={summary.operatingSignals} />
             <Card>
               <h3 className="font-heading text-lg font-semibold">Operating checkpoints</h3>
@@ -108,7 +108,7 @@ export function OperatorWorkspace() {
             </Card>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4 2xl:grid-cols-2">
             <Card>
               <h3 className="font-heading text-lg font-semibold">Simplified balance-sheet bridge</h3>
               <div className="mt-4 overflow-x-auto">

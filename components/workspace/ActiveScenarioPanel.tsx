@@ -173,8 +173,15 @@ export function ActiveScenarioPanel({
           <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImport} />
         </div>
         <p className="mt-3 text-sm text-slate-500">
-          Ownership input total: <span className="font-semibold text-slate-900">{totalOwnership.toFixed(1)}%</span>. The
-          engine normalizes the mix if it is not exactly 100%.
+          Ownership input total:{" "}
+          <span
+            className={
+              Math.abs(totalOwnership - 100) <= 0.5 ? "font-semibold text-emerald-800" : "font-semibold text-amber-900"
+            }
+          >
+            {totalOwnership.toFixed(1)}%
+          </span>
+          . The engine normalizes the mix if it is not exactly 100%.
         </p>
         <p className="mt-2 text-sm text-slate-500">{importHint}</p>
         {diagnostics.issues.length > 0 ? (

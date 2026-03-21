@@ -1,13 +1,17 @@
 "use client";
 
+import { useMemo } from "react";
 import type { ChangeEvent } from "react";
 
 import { stagePresets } from "@/data/presets";
 import { Field } from "@/components/ui/Field";
 import { MoneyInput } from "@/components/ui/MoneyInput";
+import { SupportBadge } from "@/components/ui/SupportBadge";
 import { normalizeFounders, sumFounderOwnership } from "@/lib/founders";
 import { ScenarioConfig, SectorOverlay, MarketOverlay, FundingStage, RoundKind } from "@/lib/sim/types";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { analyzeScenario } from "@/lib/scenario-diagnostics";
+import { getCurrentFinancing } from "@/lib/current-financing";
 
 interface ScenarioEditorProps {
   config: ScenarioConfig;
@@ -52,6 +56,13 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
   const stagePreset = stagePresets[config.currentStage];
   const founders = normalizeFounders(config.founders, config.capTable.founderPercent);
   const founderTotal = sumFounderOwnership(founders, config.capTable.founderPercent);
+  const diagnostics = useMemo(() => analyzeScenario(config), [config]);
+  const financing = useMemo(() => getCurrentFinancing(config), [config]);
+  const ownershipTotal =
+    config.capTable.founderPercent +
+    config.capTable.employeeCommonPercent +
+    config.capTable.employeePoolPercent +
+    config.capTable.priorInvestorPercent;
 
   return (
     <div className="space-y-8">
@@ -128,6 +139,61 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             target option pool {formatPercent(stagePreset.optionPoolTarget)}.
           </p>
           <p className="mt-2 text-amber-900/80">{stagePreset.note}</p>
+        </div>
+        <div className="rounded-panel border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-heading text-base font-semibold text-foreground">Input integrity</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                These checks tell you whether the current scenario is standard, approximate, or internally contradictory before you rely on the outputs.
+              </p>
+            </div>
+            <SupportBadge level={diagnostics.supportLevel} label={diagnostics.supportLabel} />
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl bg-white px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Ownership mix total</p>
+              <p className="mt-2 font-semibold text-slate-900">{ownershipTotal.toFixed(1)}%</p>
+              <p className="mt-1 text-sm text-slate-500">
+                {Math.abs(ownershipTotal - 100) <= 0.5 ? "Within tolerance." : "Will be normalized unless corrected."}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Founder split total</p>
+              <p className="mt-2 font-semibold text-slate-900">{founderTotal.toFixed(1)}%</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Cap table founder stake {config.capTable.founderPercent.toFixed(1)}%.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Modeled investor at risk</p>
+              <p className="mt-2 font-semibold text-slate-900">{formatCurrency(financing.modeledInvestorCheck)}</p>
+              <p className="mt-1 text-sm text-slate-500">Inside a total raise of {formatCurrency(financing.totalRoundRaise)}.</p>
+            </div>
+          </div>
+          {diagnostics.issues.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              {diagnostics.issues.slice(0, 3).map((issue) => (
+                <div
+                  key={`${issue.level}-${issue.title}`}
+                  className={
+                    issue.level === "unsupported"
+                      ? "rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950"
+                      : issue.level === "approximate"
+                        ? "rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+                        : "rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"
+                  }
+                >
+                  <p className="font-semibold">{issue.title}</p>
+                  <p className="mt-1 leading-6 opacity-90">{issue.detail}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              This setup stays inside the app&apos;s standard venture-math coverage.
+            </p>
+          )}
         </div>
       </section>
 
