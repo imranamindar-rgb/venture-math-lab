@@ -1,3 +1,60 @@
+function tryCompactNumberFormat(
+  value: number,
+  options: Intl.NumberFormatOptions,
+) {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      ...options,
+    }).format(value);
+  } catch {
+    return null;
+  }
+}
+
+function fallbackCompactCurrency(value: number) {
+  const absolute = Math.abs(value);
+
+  if (absolute >= 1_000_000_000) {
+    const billions = value / 1_000_000_000;
+    const fractionDigits = Math.abs(billions) >= 10 ? 0 : 1;
+    return `$${billions.toLocaleString("en-US", {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    })}B`;
+  }
+
+  if (absolute >= 1_000_000) {
+    const millions = value / 1_000_000;
+    const fractionDigits = Math.abs(millions) >= 10 ? 0 : 1;
+    return `$${millions.toLocaleString("en-US", {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    })}M`;
+  }
+
+  if (absolute >= 1_000) {
+    const thousands = value / 1_000;
+    const fractionDigits = Math.abs(thousands) >= 10 ? 0 : 1;
+    return `$${thousands.toLocaleString("en-US", {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    })}K`;
+  }
+
+  return formatCurrency(value);
+}
+
+export function formatCompactCurrency(value: number) {
+  return (
+    tryCompactNumberFormat(value, {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 1,
+    }) ?? fallbackCompactCurrency(value)
+  );
+}
+
 export function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -16,12 +73,7 @@ export function formatMoneyScaleHint(value: number) {
   const absolute = Math.abs(value);
 
   if (absolute >= 1_000_000_000) {
-    return new Intl.NumberFormat("en-US", {
-      notation: "compact",
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 1,
-    }).format(value);
+    return formatCompactCurrency(value);
   }
 
   if (absolute >= 1_000_000) {
@@ -34,12 +86,7 @@ export function formatMoneyScaleHint(value: number) {
   }
 
   if (absolute >= 1_000) {
-    return new Intl.NumberFormat("en-US", {
-      notation: "compact",
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 1,
-    }).format(value);
+    return formatCompactCurrency(value);
   }
 
   return formatCurrency(value);
@@ -57,8 +104,12 @@ export function formatMultiple(value: number) {
 }
 
 export function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
+  return (
+    tryCompactNumberFormat(value, {
+      maximumFractionDigits: 1,
+    }) ??
+    value.toLocaleString("en-US", {
+      maximumFractionDigits: 1,
+    })
+  );
 }

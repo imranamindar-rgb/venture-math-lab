@@ -2,6 +2,7 @@ import { ScenarioConfig } from "@/lib/sim/types";
 import { replaceAllText } from "@/lib/compat";
 import { getCurrentFinancing } from "@/lib/current-financing";
 import { sumFounderOwnership } from "@/lib/founders";
+import { formatCompactCurrency } from "@/lib/format";
 
 export type SupportLevel = "standard" | "approximate" | "unsupported";
 
@@ -29,12 +30,7 @@ function formatPercentPoint(value: number) {
 }
 
 function formatCurrencyCompact(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 1,
-  }).format(value);
+  return formatCompactCurrency(value);
 }
 
 export function analyzeScenario(config: ScenarioConfig): ScenarioDiagnostics {
