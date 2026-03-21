@@ -9,7 +9,7 @@
 ## Outcomes
 
 - Lint: passed with no warnings or errors
-- Tests: passed with 40 passing tests across 7 test files
+- Tests: passed with 41 passing tests across 7 test files
 - Build: passed; all app routes prerendered successfully
 
 ## Route Build Output
@@ -18,11 +18,11 @@
 | --- | ---: |
 | `/` | 96.5 kB |
 | `/_not-found` | 88.5 kB |
-| `/calculator` | 260 kB |
-| `/cap-table` | 160 kB |
-| `/compare` | 153 kB |
+| `/calculator` | 264 kB |
+| `/cap-table` | 161 kB |
+| `/compare` | 256 kB |
 | `/dashboard` | 242 kB |
-| `/fund` | 235 kB |
+| `/fund` | 239 kB |
 | `/health` | 0 B |
 | `/methodology` | 96.5 kB |
 | `/operator` | 258 kB |
@@ -50,6 +50,9 @@ The benchmark harness recorded:
 - Deterministic calculator now includes a founder take-home panel and an option-pool shuffle illustration in both ownership and dollar terms.
 - Fund Lab now includes a median J-curve timeline covering DPI, TVPI, and paid-in ratio.
 - Monte Carlo terminal outcomes now use a continuous Pareto tail with user-visible alpha control, and SAFE/note conversions now create explicit shadow series in the waterfall stack.
+- Compare mode now includes term-sheet A/B outcome curves for founder net and investor proceeds across deterministic exit values.
+- Deterministic calculator now includes a liquidation dead-zone chart that shows where the preferred stack still dominates the payout.
+- Fund Lab now includes a follow-on/signaling-risk strategy matrix, a net-TVPI tornado chart, a yearly LP fee/carry schedule, contextual vintage benchmark overlays, and loss-ratio vs concentration decomposition.
 
 ## Environment Notes
 

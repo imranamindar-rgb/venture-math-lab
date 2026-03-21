@@ -29,6 +29,40 @@ export interface FundPresetOption {
   config: FundConstructionConfig;
 }
 
+export interface FundStrategyMatrixRow {
+  label: string;
+  note: string;
+  netTVPIMedian: number;
+  topWinnerShareMedian: number;
+  oneCompanyReturnsFundProbability: number;
+  modeledCompanyCount: number;
+  followOnCapacity: number;
+  signalingRiskProbability: number;
+  ownershipMaintenanceRate: number;
+}
+
+export interface FundTornadoBar {
+  label: string;
+  lowerDelta: number;
+  upperDelta: number;
+}
+
+export interface FundFeeCarryScheduleRow {
+  year: number;
+  feesPaid: number;
+  paidInCapital: number;
+  grossDistributions: number;
+  carryPaid: number;
+  netDistributions: number;
+  cumulativeNetDistributions: number;
+}
+
+export interface FundLossConcentrationSummary {
+  medianLossRatio: number;
+  medianLossOfCapitalRatio: number;
+  quadrantProbabilities: ThresholdMetric[];
+}
+
 export interface FundConstructionSummary {
   managementFees: number;
   investableCapital: number;
@@ -53,6 +87,10 @@ export interface FundConstructionSummary {
     tvpiMedian: number;
     paidInRatioMedian: number;
   }>;
+  feeCarrySchedule: FundFeeCarryScheduleRow[];
+  strategyMatrix: FundStrategyMatrixRow[];
+  sensitivity: FundTornadoBar[];
+  lossConcentration: FundLossConcentrationSummary;
   warnings: string[];
 }
 
@@ -119,6 +157,15 @@ function toProbability(label: string, count: number, total: number): ThresholdMe
     label,
     probability: total === 0 ? 0 : count / total,
   };
+}
+
+function medianNumber(values: number[]) {
+  return values.length === 0 ? 0 : median(values);
+}
+
+interface FundSummaryOptions {
+  includeExtensions?: boolean;
+  simulationCountOverride?: number;
 }
 
 export function getDefaultFundConstructionConfig(): FundConstructionConfig {
@@ -197,7 +244,10 @@ export function getFundPresetOptions(): FundPresetOption[] {
   ];
 }
 
-export function summarizeFundConstruction(config: FundConstructionConfig): FundConstructionSummary {
+export function summarizeFundConstruction(
+  config: FundConstructionConfig,
+  options: FundSummaryOptions = {},
+): FundConstructionSummary {
   const feeYears = 10;
   const managementFees = config.fundSize * config.managementFeeRate * feeYears;
   const investableCapital = Math.max(0, config.fundSize - managementFees);
@@ -216,22 +266,35 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
   const topThreeShares: number[] = [];
   const maxCompanyProceeds: number[] = [];
   const netDistributions: number[] = [];
+  const followOnDeploymentRates: number[] = [];
+  const signalingRisks: boolean[] = [];
+  const lossRatios: number[] = [];
+  const lossOfCapitalRatios: number[] = [];
   const dpiTimelineSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
   const tvpiTimelineSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
   const paidInTimelineSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
+  const feesScheduleSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
+  const paidInScheduleSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
+  const grossDistributionScheduleSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
+  const carryScheduleSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
+  const netDistributionScheduleSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
+  const cumulativeNetDistributionScheduleSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
 
   const market = marketOverlayMultipliers[config.marketOverlay];
   const sector = sectorOverlayMultipliers[config.sectorOverlay];
   const annualManagementFee = config.fundSize * config.managementFeeRate;
   const deploymentYears = Math.max(1, Math.min(3, config.fundLifeYears));
+  const simulationCount = options.simulationCountOverride ?? config.simulationCount;
 
-  for (let iteration = 0; iteration < config.simulationCount; iteration += 1) {
+  for (let iteration = 0; iteration < simulationCount; iteration += 1) {
     const rng = createRng(config.seed + iteration);
     const companyProceeds: number[] = [];
     const exitYears: number[] = [];
     const initialCallYears: number[] = [];
     const followOnCallYears: number[] = [];
     const investedByCompany: number[] = [];
+    let eligibleForFollowOn = 0;
+    let followOnsDeployed = 0;
     let remainingReserves = reserveBudget;
 
     for (let company = 0; company < modeledCompanyCount; company += 1) {
@@ -252,11 +315,15 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
       let followOnCallYear = 0;
 
       if (config.followOnStrategy && initialMultiple >= config.followOnThreshold && remainingReserves >= config.followOnCheckSize) {
+        eligibleForFollowOn += 1;
         const followOnMultiple = Math.max(1, initialMultiple * randomBetween(rng, 0.28, 0.52));
         proceeds += config.followOnCheckSize * followOnMultiple;
         remainingReserves -= config.followOnCheckSize;
         investedCapital += config.followOnCheckSize;
         followOnCallYear = Math.min(config.fundLifeYears, Math.max(2, Math.min(4, Math.round(exitYearsForCompany / 2))));
+        followOnsDeployed += 1;
+      } else if (config.followOnStrategy && initialMultiple >= config.followOnThreshold) {
+        eligibleForFollowOn += 1;
       }
 
       companyProceeds.push(proceeds);
@@ -277,6 +344,11 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
     const sorted = [...companyProceeds].sort((a, b) => b - a);
     const topWinnerShare = grossDistribution > 0 ? (sorted[0] ?? 0) / grossDistribution : 0;
     const topThreeShare = grossDistribution > 0 ? sorted.slice(0, 3).reduce((sum, value) => sum + value, 0) / grossDistribution : 0;
+    const lossRatio = investedByCompany.filter((investedCapital, index) => (companyProceeds[index] ?? 0) < investedCapital).length /
+      Math.max(1, investedByCompany.length);
+    const lossOfCapitalRatio =
+      investedByCompany.reduce((sum, investedCapital, index) => sum + Math.max(0, investedCapital - (companyProceeds[index] ?? 0)), 0) /
+      Math.max(1, investedByCompany.reduce((sum, investedCapital) => sum + investedCapital, 0));
 
     grossTvpis.push(grossTvpi);
     netTvpis.push(netTvpi);
@@ -285,7 +357,12 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
     topThreeShares.push(topThreeShare);
     maxCompanyProceeds.push(sorted[0] ?? 0);
     netDistributions.push(netDistribution);
+    followOnDeploymentRates.push(eligibleForFollowOn > 0 ? followOnsDeployed / eligibleForFollowOn : config.followOnStrategy ? 1 : 0);
+    signalingRisks.push(eligibleForFollowOn > 0 && followOnsDeployed > 0 && followOnsDeployed < eligibleForFollowOn);
+    lossRatios.push(lossRatio);
+    lossOfCapitalRatios.push(lossOfCapitalRatio);
 
+    let cumulativeNetDistributionsForYear = 0;
     for (let year = 0; year <= config.fundLifeYears; year += 1) {
       const cumulativeFees = year === 0 ? 0 : Math.min(year, feeYears) * annualManagementFee;
       const cumulativeInitialCalls = initialCallYears.reduce(
@@ -301,6 +378,21 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
         (sum, proceeds, index) => sum + ((exitYears[index] ?? config.fundLifeYears) <= year ? proceeds : 0),
         0,
       );
+      const yearlyGrossDistributions = companyProceeds.reduce((sum, proceeds, index) => {
+        const exitYear = Math.min(config.fundLifeYears, Math.max(1, Math.round(exitYears[index] ?? config.fundLifeYears)));
+        return sum + (exitYear === year ? proceeds : 0);
+      }, 0);
+      const cumulativeCarry = config.carryRate * Math.max(0, cumulativeDistributions - config.fundSize);
+      const priorCumulativeDistributions =
+        year === 0
+          ? 0
+          : companyProceeds.reduce((sum, proceeds, index) => {
+              const exitYear = exitYears[index] ?? config.fundLifeYears;
+              return sum + (exitYear <= year - 1 ? proceeds : 0);
+            }, 0);
+      const priorCumulativeCarry = config.carryRate * Math.max(0, priorCumulativeDistributions - config.fundSize);
+      const yearlyCarry = Math.max(0, cumulativeCarry - priorCumulativeCarry);
+      const yearlyNetDistributions = Math.max(0, yearlyGrossDistributions - yearlyCarry);
       const unrealizedAtCost = investedByCompany.reduce((sum, investedCapital, index) => {
         const callYear = initialCallYears[index] ?? 1;
         const exited = (exitYears[index] ?? config.fundLifeYears) <= year;
@@ -312,6 +404,13 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
         paidInCapital > 0 ? (cumulativeDistributions + unrealizedAtCost) / paidInCapital : 0,
       );
       paidInTimelineSamples[year].push(config.fundSize > 0 ? paidInCapital / config.fundSize : 0);
+      cumulativeNetDistributionsForYear += yearlyNetDistributions;
+      feesScheduleSamples[year].push(year === 0 ? 0 : year <= feeYears ? annualManagementFee : 0);
+      paidInScheduleSamples[year].push(paidInCapital);
+      grossDistributionScheduleSamples[year].push(yearlyGrossDistributions);
+      carryScheduleSamples[year].push(yearlyCarry);
+      netDistributionScheduleSamples[year].push(yearlyNetDistributions);
+      cumulativeNetDistributionScheduleSamples[year].push(cumulativeNetDistributionsForYear);
     }
   }
 
@@ -340,6 +439,50 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
   if (config.stage === "series_c" && config.targetOwnership > 0.1) {
     warnings.push("Later-stage ownership targets above 10% are uncommon and will overstate return-the-fund odds.");
   }
+  const followOnDeploymentRateMedian = medianNumber(followOnDeploymentRates);
+  const selectiveSignalProbability = signalingRisks.filter(Boolean).length / Math.max(1, signalingRisks.length);
+  if (config.followOnStrategy && selectiveSignalProbability > 0.2) {
+    warnings.push(
+      `The current follow-on setup leaves a median ownership maintenance rate near ${formatPercent(followOnDeploymentRateMedian)} and creates selective signaling in ${formatPercent(selectiveSignalProbability)} of paths.`,
+    );
+  }
+
+  const feeCarrySchedule: FundFeeCarryScheduleRow[] = Array.from({ length: config.fundLifeYears + 1 }, (_, year) => ({
+    year,
+    feesPaid: medianNumber(feesScheduleSamples[year]),
+    paidInCapital: medianNumber(paidInScheduleSamples[year]),
+    grossDistributions: medianNumber(grossDistributionScheduleSamples[year]),
+    carryPaid: medianNumber(carryScheduleSamples[year]),
+    netDistributions: medianNumber(netDistributionScheduleSamples[year]),
+    cumulativeNetDistributions: medianNumber(cumulativeNetDistributionScheduleSamples[year]),
+  }));
+
+  const lossConcentration: FundLossConcentrationSummary = {
+    medianLossRatio: medianNumber(lossRatios),
+    medianLossOfCapitalRatio: medianNumber(lossOfCapitalRatios),
+    quadrantProbabilities: [
+      toProbability(
+        "High loss / concentrated",
+        lossRatios.filter((value, index) => value >= 0.55 && (topWinnerShares[index] ?? 0) >= 0.5).length,
+        lossRatios.length,
+      ),
+      toProbability(
+        "High loss / diversified",
+        lossRatios.filter((value, index) => value >= 0.55 && (topWinnerShares[index] ?? 0) < 0.5).length,
+        lossRatios.length,
+      ),
+      toProbability(
+        "Contained loss / concentrated",
+        lossRatios.filter((value, index) => value < 0.55 && (topWinnerShares[index] ?? 0) >= 0.5).length,
+        lossRatios.length,
+      ),
+      toProbability(
+        "Contained loss / diversified",
+        lossRatios.filter((value, index) => value < 0.55 && (topWinnerShares[index] ?? 0) < 0.5).length,
+        lossRatios.length,
+      ),
+    ],
+  };
 
   return {
     managementFees,
@@ -382,8 +525,143 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
       tvpiMedian: median(tvpiTimelineSamples[year]),
       paidInRatioMedian: median(paidInTimelineSamples[year]),
     })),
+    feeCarrySchedule,
+    strategyMatrix: options.includeExtensions === false ? [] : buildStrategyMatrix(config),
+    sensitivity: options.includeExtensions === false ? [] : buildSensitivityBars(config),
+    lossConcentration,
     warnings,
   };
+}
+
+function buildStrategyMatrix(config: FundConstructionConfig): FundStrategyMatrixRow[] {
+  const sampleCount = Math.min(1500, config.simulationCount);
+  const variants: Array<{ label: string; note: string; config: FundConstructionConfig }> = [
+    {
+      label: "Full pro rata",
+      note: "Defend ownership broadly and accept lower diversification plus lower signaling risk.",
+      config: {
+        ...config,
+        followOnStrategy: true,
+        reserveRatio: Math.max(config.reserveRatio, 0.35),
+        followOnThreshold: 1.5,
+      },
+    },
+    {
+      label: "Selective winners",
+      note: "Use reserves only on stronger breakout paths. Higher signaling risk, better reserve efficiency.",
+      config: {
+        ...config,
+        followOnStrategy: true,
+        followOnThreshold: Math.max(config.followOnThreshold, 4),
+      },
+    },
+    {
+      label: "No follow-on",
+      note: "Put every dollar into first checks. Best diversification, no ownership defense after entry.",
+      config: {
+        ...config,
+        followOnStrategy: false,
+        reserveRatio: 0,
+        followOnCheckSize: 0,
+      },
+    },
+  ];
+
+  return variants.map((variant) => {
+    const summary = summarizeFundConstruction(sanitizeFundConstructionConfig(variant.config), {
+      includeExtensions: false,
+      simulationCountOverride: sampleCount,
+    });
+    const signalingRiskProbability =
+      variant.label === "Selective winners"
+        ? Math.max(0.15, Math.min(0.95, 1 - summary.followOnCapacity / Math.max(1, summary.modeledCompanyCount)))
+        : variant.label === "Full pro rata"
+          ? 0.08
+          : 0.04;
+    const ownershipMaintenanceRate =
+      variant.label === "No follow-on"
+        ? 0
+        : Math.min(1, summary.followOnCapacity / Math.max(1, summary.modeledCompanyCount));
+
+    return {
+      label: variant.label,
+      note: variant.note,
+      netTVPIMedian: summary.netTVPIMedian,
+      topWinnerShareMedian: summary.topWinnerShareMedian,
+      oneCompanyReturnsFundProbability: summary.oneCompanyReturnsFundProbability,
+      modeledCompanyCount: summary.modeledCompanyCount,
+      followOnCapacity: summary.followOnCapacity,
+      signalingRiskProbability,
+      ownershipMaintenanceRate,
+    };
+  });
+}
+
+function buildSensitivityBars(config: FundConstructionConfig): FundTornadoBar[] {
+  const sampleCount = Math.min(1200, config.simulationCount);
+  const base = summarizeFundConstruction(config, {
+    includeExtensions: false,
+    simulationCountOverride: sampleCount,
+  });
+  const cases: Array<{
+    label: string;
+    lower: FundConstructionConfig;
+    upper: FundConstructionConfig;
+  }> = [
+    {
+      label: "Fund size",
+      lower: { ...config, fundSize: config.fundSize * 0.8 },
+      upper: { ...config, fundSize: config.fundSize * 1.2 },
+    },
+    {
+      label: "Reserve ratio",
+      lower: { ...config, reserveRatio: Math.max(0, config.reserveRatio - 0.1) },
+      upper: { ...config, reserveRatio: Math.min(0.8, config.reserveRatio + 0.1) },
+    },
+    {
+      label: "Initial check",
+      lower: { ...config, initialCheckSize: config.initialCheckSize * 0.8 },
+      upper: { ...config, initialCheckSize: config.initialCheckSize * 1.2 },
+    },
+    {
+      label: "Target ownership",
+      lower: { ...config, targetOwnership: Math.max(0.05, config.targetOwnership - 0.03) },
+      upper: { ...config, targetOwnership: Math.min(0.3, config.targetOwnership + 0.03) },
+    },
+    {
+      label: "Follow-on threshold",
+      lower: { ...config, followOnThreshold: Math.max(1, config.followOnThreshold - 1) },
+      upper: { ...config, followOnThreshold: Math.min(25, config.followOnThreshold + 1) },
+    },
+    {
+      label: "Pareto tail by market",
+      lower: { ...config, marketOverlay: "bear" },
+      upper: { ...config, marketOverlay: "bull" },
+    },
+  ];
+
+  return cases
+    .map((item) => {
+      const lowerSummary = summarizeFundConstruction(sanitizeFundConstructionConfig(item.lower), {
+        includeExtensions: false,
+        simulationCountOverride: sampleCount,
+      });
+      const upperSummary = summarizeFundConstruction(sanitizeFundConstructionConfig(item.upper), {
+        includeExtensions: false,
+        simulationCountOverride: sampleCount,
+      });
+
+      return {
+        label: item.label,
+        lowerDelta: lowerSummary.netTVPIMedian - base.netTVPIMedian,
+        upperDelta: upperSummary.netTVPIMedian - base.netTVPIMedian,
+      };
+    })
+    .sort(
+      (left, right) =>
+        Math.max(Math.abs(right.lowerDelta), Math.abs(right.upperDelta)) -
+        Math.max(Math.abs(left.lowerDelta), Math.abs(left.upperDelta)),
+    );
 }
 
 export function sanitizeFundConstructionConfig(config: FundConstructionConfig): FundConstructionConfig {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getScenarioPreset } from "@/data/presets";
 import { buildScenarioCsv } from "@/lib/export";
+import { buildComparisonPayload } from "@/lib/reporting";
 import { analyzeScenario } from "@/lib/scenario-diagnostics";
 
 describe("reporting and diagnostics", () => {
@@ -36,5 +37,15 @@ describe("reporting and diagnostics", () => {
     expect(csv).toContain("Simulation,Founder median");
     expect(csv).toContain("Operator,Runway months");
     expect(csv).toContain("Waterfall,");
+  });
+
+  it("builds a term-sheet comparison curve with deterministic exit checkpoints", () => {
+    const baseline = getScenarioPreset("nvca_standard");
+    const comparison = getScenarioPreset("stress_case");
+    const payload = buildComparisonPayload(baseline, comparison);
+
+    expect(payload.termSheetCurve.length).toBeGreaterThan(5);
+    expect(payload.termSheetCurve[0]?.baselineFounderNet).toBeGreaterThanOrEqual(0);
+    expect(payload.termSheetCurve[0]?.comparisonInvestorProceeds).toBeGreaterThanOrEqual(0);
   });
 });

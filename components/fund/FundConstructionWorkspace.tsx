@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { stageOrder, FundingStage, MarketOverlay, SectorOverlay } from "@/lib/sim/types";
 import { Card } from "@/components/ui/Card";
@@ -10,20 +10,29 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { FundTimelineChart } from "@/components/charts/FundTimelineChart";
 import { HistogramChart } from "@/components/charts/HistogramChart";
 import { ProbabilityChart } from "@/components/charts/ProbabilityChart";
+import { TornadoChart } from "@/components/charts/TornadoChart";
 import {
   getDefaultFundConstructionConfig,
   getFundPresetOptions,
   sanitizeFundConstructionConfig,
   summarizeFundConstruction,
 } from "@/lib/engines/fund-construction";
+import { getVintageBenchmarks } from "@/data/vintage-benchmarks";
 import { formatCurrency, formatMultiple, formatPercent } from "@/lib/format";
 
 export function FundConstructionWorkspace() {
   const [config, setConfig] = useState(getDefaultFundConstructionConfig());
   const [showControls, setShowControls] = useState(false);
+  const [selectedBenchmarkId, setSelectedBenchmarkId] = useState("");
   const presetOptions = useMemo(() => getFundPresetOptions(), []);
   const safeConfig = useMemo(() => sanitizeFundConstructionConfig(config), [config]);
   const summary = useMemo(() => summarizeFundConstruction(safeConfig), [safeConfig]);
+  const benchmarkOptions = useMemo(() => getVintageBenchmarks(safeConfig.stage), [safeConfig.stage]);
+  const selectedBenchmark = benchmarkOptions.find((benchmark) => benchmark.id === selectedBenchmarkId) ?? benchmarkOptions[0];
+
+  useEffect(() => {
+    setSelectedBenchmarkId(benchmarkOptions[0]?.id ?? "");
+  }, [benchmarkOptions]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -89,12 +98,68 @@ export function FundConstructionWorkspace() {
           </Card>
         </div>
 
+        {summary.netTVPIMedian < 1 ? (
+          <Card className="border-amber-200 bg-amber-50">
+            <h2 className="font-heading text-xl font-semibold text-slate-900">Default-fund framing</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              This scenario currently shows a sub-1.0x median net TVPI because reserve drag, check size, and company count are interacting pessimistically. Treat it as a construction warning, not a blanket claim that seed funds are uneconomic.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              Current setup supports {summary.modeledCompanyCount} initial companies, reserves {formatCurrency(summary.reserveBudget)}, and leaves median net TVPI at {formatMultiple(summary.netTVPIMedian)}.
+            </p>
+          </Card>
+        ) : null}
+
         <div className="grid gap-4 2xl:grid-cols-[1.05fr,0.95fr]">
           <HistogramChart title="Net TVPI Distribution" data={summary.netMultipleHistogram} />
           <ProbabilityChart title="Fund Concentration and Outcomes" data={summary.concentrationMetrics} />
         </div>
 
-        <FundTimelineChart data={summary.timeline} />
+        <div className="grid gap-4 2xl:grid-cols-[1.15fr,0.85fr]">
+          <FundTimelineChart
+            data={summary.timeline}
+            benchmark={selectedBenchmark ? { label: selectedBenchmark.label, timeline: selectedBenchmark.timeline } : undefined}
+          />
+          <Card>
+            <div className="flex items-center gap-2">
+              <h2 className="font-heading text-xl font-semibold">Vintage benchmark overlay</h2>
+              <InfoTip
+                content="These overlays are contextual reference curves for venture-vintage behavior, meant to calibrate the simulated J-curve rather than act as a live benchmark feed."
+                label="Vintage benchmark help"
+              />
+            </div>
+            <select
+              value={selectedBenchmark?.id ?? ""}
+              onChange={(event) => setSelectedBenchmarkId(event.target.value)}
+              className="mt-4 w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+            >
+              {benchmarkOptions.map((benchmark) => (
+                <option key={benchmark.id} value={benchmark.id}>
+                  {benchmark.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              {selectedBenchmark?.note ?? "No benchmark overlay selected for this stage."}
+            </p>
+            {selectedBenchmark ? (
+              <dl className="mt-4 space-y-3 text-sm text-slate-700">
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
+                  <dt>Year 5 benchmark DPI</dt>
+                  <dd className="font-semibold">
+                    {formatMultiple(selectedBenchmark.timeline.find((point) => point.year === 5)?.dpi ?? 0)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
+                  <dt>Year 10 benchmark TVPI</dt>
+                  <dd className="font-semibold">
+                    {formatMultiple(selectedBenchmark.timeline.find((point) => point.year === 10)?.tvpi ?? 0)}
+                  </dd>
+                </div>
+              </dl>
+            ) : null}
+          </Card>
+        </div>
 
         <div className="grid gap-4 2xl:grid-cols-2">
           <Card>
@@ -136,6 +201,125 @@ export function FundConstructionWorkspace() {
                 <span>One company returns fund</span>
                 <span className="font-semibold">{formatPercent(summary.oneCompanyReturnsFundProbability)}</span>
               </li>
+            </ul>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 2xl:grid-cols-[1.05fr,0.95fr]">
+          <Card>
+            <div className="flex items-center gap-2">
+              <h2 className="font-heading text-xl font-semibold">Follow-on and signaling-risk matrix</h2>
+              <InfoTip
+                content="This compares how full pro rata, selective winner support, and no-follow-on policies change median TVPI, concentration, and the probability that your behavior sends a negative signal to the market."
+                label="Follow-on matrix help"
+              />
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full border-separate border-spacing-y-2 text-sm text-slate-700">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-500">
+                    <th className="px-3 py-2">Strategy</th>
+                    <th className="px-3 py-2">Net TVPI</th>
+                    <th className="px-3 py-2">Top winner</th>
+                    <th className="px-3 py-2">Return fund</th>
+                    <th className="px-3 py-2">Signaling risk</th>
+                    <th className="px-3 py-2">Ownership defense</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.strategyMatrix.map((row) => (
+                    <tr key={row.label} className="rounded-panel bg-slate-50">
+                      <td className="rounded-l-2xl px-3 py-3">
+                        <p className="font-semibold text-slate-900">{row.label}</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">{row.note}</p>
+                      </td>
+                      <td className="px-3 py-3">{formatMultiple(row.netTVPIMedian)}</td>
+                      <td className="px-3 py-3">{formatPercent(row.topWinnerShareMedian)}</td>
+                      <td className="px-3 py-3">{formatPercent(row.oneCompanyReturnsFundProbability)}</td>
+                      <td className="px-3 py-3">{formatPercent(row.signalingRiskProbability)}</td>
+                      <td className="rounded-r-2xl px-3 py-3">{formatPercent(row.ownershipMaintenanceRate)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <TornadoChart
+            title="Net TVPI Sensitivity Tornado"
+            data={summary.sensitivity}
+            valueFormatter={(value) => `${value > 0 ? "+" : ""}${value.toFixed(2)}x`}
+          />
+        </div>
+
+        <div className="grid gap-4 2xl:grid-cols-[1.1fr,0.9fr]">
+          <Card>
+            <div className="flex items-center gap-2">
+              <h2 className="font-heading text-xl font-semibold">LP fee and carry schedule by year</h2>
+              <InfoTip
+                content="This shows the median annual fee drag, capital called, gross distributions, carry paid, and net distributions back to LPs."
+                label="Fee carry schedule help"
+              />
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full border-separate border-spacing-y-2 text-sm text-slate-700">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-500">
+                    <th className="px-3 py-2">Year</th>
+                    <th className="px-3 py-2">Fees</th>
+                    <th className="px-3 py-2">Paid-in</th>
+                    <th className="px-3 py-2">Gross dist.</th>
+                    <th className="px-3 py-2">Carry</th>
+                    <th className="px-3 py-2">Net dist.</th>
+                    <th className="px-3 py-2">Cum. net dist.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.feeCarrySchedule.map((row) => (
+                    <tr key={row.year} className="rounded-panel bg-slate-50">
+                      <td className="rounded-l-2xl px-3 py-3 font-semibold text-slate-900">{row.year}</td>
+                      <td className="px-3 py-3">{formatCurrency(row.feesPaid)}</td>
+                      <td className="px-3 py-3">{formatCurrency(row.paidInCapital)}</td>
+                      <td className="px-3 py-3">{formatCurrency(row.grossDistributions)}</td>
+                      <td className="px-3 py-3">{formatCurrency(row.carryPaid)}</td>
+                      <td className="px-3 py-3">{formatCurrency(row.netDistributions)}</td>
+                      <td className="rounded-r-2xl px-3 py-3">{formatCurrency(row.cumulativeNetDistributions)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="flex items-center gap-2">
+              <h2 className="font-heading text-xl font-semibold">Loss-ratio vs concentration</h2>
+              <InfoTip
+                content="This decomposes whether fund outcomes are being driven by too many losses, too much dependence on a single winner, or both."
+                label="Loss ratio decomposition help"
+              />
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl bg-slate-50 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Median loss ratio</p>
+                <p className="mt-2 font-heading text-2xl font-semibold">
+                  {formatPercent(summary.lossConcentration.medianLossRatio)}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Median loss of capital</p>
+                <p className="mt-2 font-heading text-2xl font-semibold">
+                  {formatPercent(summary.lossConcentration.medianLossOfCapitalRatio)}
+                </p>
+              </div>
+            </div>
+            <ul className="mt-4 space-y-3 text-sm text-slate-700">
+              {summary.lossConcentration.quadrantProbabilities.map((metric) => (
+                <li key={metric.label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
+                  <span>{metric.label}</span>
+                  <span className="font-semibold">{formatPercent(metric.probability)}</span>
+                </li>
+              ))}
             </ul>
           </Card>
         </div>

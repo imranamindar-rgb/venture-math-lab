@@ -65,6 +65,20 @@ export interface DeterministicWaterfallScenario {
   preferredStructure: string;
 }
 
+export interface LiquidationDeadZonePoint {
+  exitValue: number;
+  founderNet: number;
+  employeeNet: number;
+  investorProceeds: number;
+  preferenceBurden: number;
+  preferredConverted: boolean;
+}
+
+export interface LiquidationDeadZoneSummary {
+  deadZoneEndsAt: number;
+  points: LiquidationDeadZonePoint[];
+}
+
 export interface OptionPoolShuffleIllustration {
   preMoneyFounderOwnership: number;
   postMoneyFounderOwnership: number;
@@ -96,6 +110,7 @@ export interface DeterministicFinanceSummary {
   ownershipSeries: OwnershipPoint[];
   roundProjection: DeterministicRoundProjection[];
   waterfallScenarios: DeterministicWaterfallScenario[];
+  liquidationDeadZone: LiquidationDeadZoneSummary;
   optionPoolShuffle: OptionPoolShuffleIllustration;
   warnings: string[];
 }
@@ -280,6 +295,10 @@ export function evaluateDeterministicExitScenario(config: ScenarioConfig, exitVa
   };
 }
 
+export function buildDeterministicExitCurve(config: ScenarioConfig, exitValues: number[]) {
+  return exitValues.map((exitValue) => evaluateDeterministicExitScenario(config, exitValue));
+}
+
 export function calculatePostMoney(preMoney: number, newInvestment: number) {
   return preMoney + newInvestment;
 }
@@ -303,6 +322,51 @@ export function calculateRequiredExitValue(targetProceeds: number, ownershipAtEx
   }
 
   return targetProceeds / ownershipAtExit;
+}
+
+function buildLiquidationDeadZone(
+  config: ScenarioConfig,
+  snapshot: CapTableSnapshot,
+  terminalPostMoney: number,
+  returnTheFundExit: number,
+): LiquidationDeadZoneSummary {
+  const maxExit = Math.max(terminalPostMoney * 8, returnTheFundExit * 1.1, config.currentPreMoney + config.currentRoundSize);
+  const multipliers = [0.1, 0.2, 0.35, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5, 8, 12];
+
+  const points = multipliers.map((multiple) => {
+    const exitValue = Math.max(250_000, terminalPostMoney * multiple);
+    const waterfall = computeWaterfall(
+      snapshot,
+      exitValue,
+      getEmployeeExerciseCost(config, snapshot, exitValue),
+      config.preferred,
+    );
+    const founderNet = waterfall.founderPayout + snapshot.realizedFounderSecondary;
+    const employeeNet = waterfall.employeeNetPayout + snapshot.realizedEmployeeSecondary;
+    const preferenceBurden =
+      exitValue > 0
+        ? (waterfall.notePayout + waterfall.safePayout + waterfall.priorInvestorPayout + waterfall.investorPayout) /
+          exitValue
+        : 0;
+
+    return {
+      exitValue,
+      founderNet,
+      employeeNet,
+      investorProceeds: waterfall.investorPayout,
+      preferenceBurden,
+      preferredConverted: waterfall.preferredConverted,
+    };
+  });
+
+  const deadZoneEndsAt =
+    points.find((point) => point.preferredConverted || point.founderNet >= 1_000_000)?.exitValue ??
+    Math.min(maxExit, points.at(-1)?.exitValue ?? maxExit);
+
+  return {
+    deadZoneEndsAt,
+    points,
+  };
 }
 
 export function summarizeDeterministicFinance(config: ScenarioConfig): DeterministicFinanceSummary {
@@ -427,6 +491,7 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
     ownershipSeries: path.ownershipSeries,
     roundProjection: path.roundProjection,
     waterfallScenarios,
+    liquidationDeadZone: buildLiquidationDeadZone(config, path.snapshot, path.terminalPostMoney, returnTheFundExit),
     optionPoolShuffle: buildOptionPoolShuffleIllustration(config),
     warnings,
   };

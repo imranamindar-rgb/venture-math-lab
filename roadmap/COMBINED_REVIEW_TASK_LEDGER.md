@@ -29,8 +29,8 @@ Status meanings:
 | `HP-3` | Scenario library with save / load / rename / delete / compare / export / reproducible seed | `VALIDATED` | Scenario store already supports save/load/rename/delete/import/export; seed is persisted and shown in report/simulation outputs. |
 | `HP-4` | Add a crisp decision dashboard / answer layer | `VALIDATED` | Calculator, simulator, cap-table, dashboard, fund, and operator now lead with answer cards before the modeling surface. |
 | `HP-5` | Add DPI / J-curve timeline | `DONE` | Fund engine now computes a median DPI/TVPI/paid-in timeline and the fund page renders a J-curve chart. |
-| `HP-6` | Add follow-on strategy and signaling-risk modeling | `ROADMAP` | Current fund engine supports on/off selective follow-on with thresholding, but not a full strategy matrix or signaling-risk layer yet. |
-| `HP-7` | Add sensitivity / tornado diagram | `ROADMAP` | Still missing as a dedicated analysis surface. |
+| `HP-6` | Add follow-on strategy and signaling-risk modeling | `DONE` | Fund Lab now includes a three-strategy matrix covering full pro rata, selective winners, and no follow-on, with signaling-risk and ownership-defense metrics. |
+| `HP-7` | Add sensitivity / tornado diagram | `DONE` | Fund Lab now includes a net-TVPI tornado chart driven by one-at-a-time perturbations of core construction inputs. |
 | `HP-8` | Show confidence intervals on Monte Carlo outputs | `VALIDATED` | Simulation and report surfaces already show batch-estimated 95% confidence intervals. |
 | `HP-9` | Add option-pool shuffle visualization | `DONE` | Calculator now shows pre-money vs post-money pool-shuffle founder impact in both ownership and dollars. |
 | `HP-10` | Add “What do I take home?” founder calculator | `DONE` | Calculator now includes a custom exit-value take-home panel for founder, employee, modeled investor, and prior investors. |
@@ -50,8 +50,8 @@ Status meanings:
 | --- | --- | --- | --- |
 | `F-1` | Founder personal proceeds at exit X | `DONE` | Added to the calculator. |
 | `F-2` | Option-pool shuffle in founder dollars | `DONE` | Added to the calculator. |
-| `F-3` | Term-sheet A/B comparison | `ROADMAP` | Compare page is stronger, but not yet a dedicated term-sheet comparator. |
-| `F-4` | Liquidation dead-zone visualization | `ROADMAP` | Still missing as a continuous exit-vs-founder-proceeds curve. |
+| `F-3` | Term-sheet A/B comparison | `DONE` | Compare page now includes deterministic A/B outcome curves for founder net and investor proceeds across exit values. |
+| `F-4` | Liquidation dead-zone visualization | `DONE` | Calculator now includes a liquidation dead-zone chart showing founder net and investor proceeds across the exit range with the overhang window shaded. |
 | `F-5` | Cap-table evolution slider | `ROADMAP` | Ownership drift exists, but not a dedicated step slider on the cap-table page. |
 | `F-6` | Down-round SAFE vs priced-round interaction explanation | `DONE` | SAFE bridge now compares cap vs round-price conversion and teaches dilution source explicitly. |
 
@@ -60,13 +60,13 @@ Status meanings:
 | ID | Task | Status | Disposition |
 | --- | --- | --- | --- |
 | `V-1` | Deal return heatmap by exit value and timing | `ROADMAP` | Not added in this pass. |
-| `V-2` | Follow-on strategy modeler with signaling risk | `ROADMAP` | Partial follow-on thresholding exists; full strategy matrix still missing. |
+| `V-2` | Follow-on strategy modeler with signaling risk | `DONE` | Fund Lab now surfaces a follow-on/signaling-risk strategy matrix that compares TVPI, concentration, return-the-fund odds, and ownership defense. |
 | `V-3` | Reserve-ratio optimizer / fund-size constraint map | `ROADMAP` | Warnings and thresholds exist, but not an optimizer surface. |
 | `V-4` | IC memo export with assumptions appendix | `DONE` | Report and compare memo exports now include assumptions, support status, and scenario metadata. |
 | `LP-1` | DPI / J-curve timeline | `DONE` | Added to Fund Lab. |
-| `LP-2` | Paid-in / fee schedule by year | `ROADMAP` | Paid-in ratio is shown inside the J-curve timeline, but a full fee/carry schedule table is still missing. |
-| `LP-3` | Loss-ratio vs concentration decomposition | `ROADMAP` | Not added in this pass. |
-| `LP-4` | Vintage benchmark overlay | `ROADMAP` | Methodology cites benchmarks, but no interactive overlay exists yet. |
+| `LP-2` | Paid-in / fee schedule by year | `DONE` | Fund Lab now includes a yearly LP fee/carry schedule with fees, paid-in, gross distributions, carry, net distributions, and cumulative net distributions. |
+| `LP-3` | Loss-ratio vs concentration decomposition | `DONE` | Fund Lab now includes median loss ratios and a quadrant decomposition separating loss intensity from concentration dependence. |
+| `LP-4` | Vintage benchmark overlay | `DONE` | Fund Lab now overlays contextual vintage benchmark DPI/TVPI curves onto the J-curve and lets the user switch the reference vintage. |
 
 ## Academic / Audit Requests
 
@@ -76,7 +76,7 @@ Status meanings:
 | `A-2` | Export full parameter state | `VALIDATED` | Scenario CSV export includes flattened config and simulation metadata. |
 | `A-3` | Confidence intervals everywhere important | `VALIDATED` | Added to simulator and report outputs. |
 | `A-4` | Calibration citations / methodology provenance | `VALIDATED` | Methodology already includes calibration references and limitations. |
-| `A-5` | Tornado / one-at-a-time sensitivity diagrams | `ROADMAP` | Still missing. |
+| `A-5` | Tornado / one-at-a-time sensitivity diagrams | `DONE` | Added to Fund Lab with one-at-a-time perturbation bars for the key construction levers. |
 
 ## Critiques Rebutted By Current Code
 
@@ -110,10 +110,6 @@ Status meanings:
 
 ### Still roadmap-scale
 
-- Term-sheet A/B comparator
-- Liquidation dead-zone chart
-- Full follow-on strategy / signaling-risk model
-- Tornado sensitivity diagrams
-- LP fee/carry schedule by year
-- Vintage benchmark overlays
-- Loss-ratio vs concentration decomposition
+- Deal return heatmap by exit value and timing
+- Reserve-ratio optimizer / fund-size constraint map
+- Cap-table evolution slider

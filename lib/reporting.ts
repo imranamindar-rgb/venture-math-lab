@@ -1,5 +1,5 @@
 import { summarizeCapTableWaterfall } from "@/lib/engines/cap-table-waterfall/analysis";
-import { summarizeDeterministicFinance } from "@/lib/engines/deterministic-finance";
+import { buildDeterministicExitCurve, summarizeDeterministicFinance } from "@/lib/engines/deterministic-finance";
 import { summarizeOperatorIntelligence } from "@/lib/engines/operator-intelligence";
 import { runMonteCarlo } from "@/lib/engines/monte-carlo";
 import { formatCurrency, formatMultiple, formatPercent } from "@/lib/format";
@@ -53,6 +53,14 @@ export interface ComparisonPayload {
   headlineCards: ComparisonCard[];
   driverCards: ComparisonCard[];
   riskLayerCards: ComparisonCard[];
+  termSheetCurve: Array<{
+    label: string;
+    exitValue: number;
+    baselineFounderNet: number;
+    comparisonFounderNet: number;
+    baselineInvestorProceeds: number;
+    comparisonInvestorProceeds: number;
+  }>;
   boardNotes: string[];
 }
 
@@ -114,6 +122,16 @@ export function buildComparisonPayload(
 ): ComparisonPayload {
   const baseline = buildScenarioReportPayload(baselineConfig, baselineSummary);
   const comparison = buildScenarioReportPayload(comparisonConfig, comparisonSummary);
+
+  const curveAnchor = Math.max(
+    baseline.deterministic.currentPostMoney,
+    comparison.deterministic.currentPostMoney,
+    10_000_000,
+  );
+  const curveMultipliers = [0.5, 1, 1.5, 2, 3, 5, 8, 12];
+  const curveExitValues = curveMultipliers.map((multiple) => curveAnchor * multiple);
+  const baselineCurve = buildDeterministicExitCurve(baselineConfig, curveExitValues);
+  const comparisonCurve = buildDeterministicExitCurve(comparisonConfig, curveExitValues);
 
   const headlineCards: ComparisonCard[] = [
     {
@@ -225,6 +243,14 @@ export function buildComparisonPayload(
     headlineCards,
     driverCards,
     riskLayerCards,
+    termSheetCurve: curveExitValues.map((exitValue, index) => ({
+      label: `${curveMultipliers[index].toFixed(curveMultipliers[index] >= 10 ? 0 : 1)}x post-money`,
+      exitValue,
+      baselineFounderNet: baselineCurve[index]?.founderNet ?? 0,
+      comparisonFounderNet: comparisonCurve[index]?.founderNet ?? 0,
+      baselineInvestorProceeds: baselineCurve[index]?.investorProceeds ?? 0,
+      comparisonInvestorProceeds: comparisonCurve[index]?.investorProceeds ?? 0,
+    })),
     boardNotes,
   };
 }

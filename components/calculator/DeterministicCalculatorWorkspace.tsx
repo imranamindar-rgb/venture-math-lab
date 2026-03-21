@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { OwnershipChart } from "@/components/charts/OwnershipChart";
+import { LiquidationDeadZoneChart } from "@/components/charts/LiquidationDeadZoneChart";
 import { ActiveScenarioPanel } from "@/components/workspace/ActiveScenarioPanel";
 import { Card } from "@/components/ui/Card";
 import { InfoTip } from "@/components/ui/InfoTip";
@@ -266,6 +267,11 @@ export function DeterministicCalculatorWorkspace() {
               </div>
           </Card>
         </div>
+
+        <LiquidationDeadZoneChart
+          data={summary.liquidationDeadZone.points}
+          deadZoneEndsAt={summary.liquidationDeadZone.deadZoneEndsAt}
+        />
 
         <ActiveScenarioPanel
           defaultCollapsed

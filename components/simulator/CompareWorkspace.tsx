@@ -7,6 +7,7 @@ import { useSimulationRunner } from "@/components/simulator/useSimulationRunner"
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SupportBadge } from "@/components/ui/SupportBadge";
+import { TermSheetComparatorChart } from "@/components/charts/TermSheetComparatorChart";
 import { analyzeScenario } from "@/lib/scenario-diagnostics";
 import { getCurrentFinancing } from "@/lib/current-financing";
 import { buildComparisonCsv, buildComparisonMarkdown } from "@/lib/export";
@@ -355,6 +356,26 @@ export function CompareWorkspace() {
                 </table>
               </div>
             </Card>
+            <div className="grid gap-4 lg:col-span-2 xl:grid-cols-2">
+              <TermSheetComparatorChart
+                title="Term-sheet A/B: Founder net by exit"
+                data={comparePayload?.termSheetCurve ?? []}
+                baselineKey="baselineFounderNet"
+                comparisonKey="comparisonFounderNet"
+                baselineLabel={active.name}
+                comparisonLabel={comparison.name}
+                formatter={formatCurrency}
+              />
+              <TermSheetComparatorChart
+                title="Term-sheet A/B: Investor proceeds by exit"
+                data={comparePayload?.termSheetCurve ?? []}
+                baselineKey="baselineInvestorProceeds"
+                comparisonKey="comparisonInvestorProceeds"
+                baselineLabel={active.name}
+                comparisonLabel={comparison.name}
+                formatter={formatCurrency}
+              />
+            </div>
             <Card>
               <h2 className="font-heading text-xl font-semibold">Risk-layer movement</h2>
               <ul className="mt-4 space-y-3 text-sm text-slate-700">

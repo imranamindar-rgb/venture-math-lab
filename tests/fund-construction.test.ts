@@ -56,5 +56,9 @@ describe("fund construction engine", () => {
     expect(summary.timeline[0]?.dpiMedian).toBe(0);
     expect(summary.timeline.at(-1)?.paidInRatioMedian).toBeGreaterThan(0);
     expect(summary.timeline.at(-1)?.tvpiMedian).toBeGreaterThan(0);
+    expect(summary.feeCarrySchedule).toHaveLength(config.fundLifeYears + 1);
+    expect(summary.strategyMatrix).toHaveLength(3);
+    expect(summary.sensitivity.length).toBeGreaterThan(3);
+    expect(summary.lossConcentration.quadrantProbabilities).toHaveLength(4);
   });
 });
