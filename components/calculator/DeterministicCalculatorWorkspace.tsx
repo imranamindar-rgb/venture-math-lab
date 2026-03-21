@@ -129,11 +129,11 @@ export function DeterministicCalculatorWorkspace() {
           </Card>
 
           <div className="grid gap-4 2xl:grid-cols-[1.05fr,0.95fr]">
-            <Card>
+            <Card className="min-w-0 overflow-hidden">
               <h3 className="font-heading text-lg font-semibold">Waterfall checkpoints</h3>
               <div className="mt-4 space-y-3">
                 {summary.waterfallScenarios.map((scenario) => (
-                  <div key={scenario.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div key={scenario.label} className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="font-semibold text-slate-900">{scenario.label}</p>
@@ -143,18 +143,24 @@ export function DeterministicCalculatorWorkspace() {
                         {scenario.preferredStructure}
                       </div>
                     </div>
-                    <dl className="mt-4 grid gap-3 md:grid-cols-3">
-                      <div className="rounded-2xl bg-white px-3 py-3">
+                    <dl className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                      <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
                         <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Founder</dt>
-                        <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.founderProceeds)}</dd>
+                        <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
+                          {formatCurrency(scenario.founderProceeds)}
+                        </dd>
                       </div>
-                      <div className="rounded-2xl bg-white px-3 py-3">
+                      <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
                         <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Employee</dt>
-                        <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.employeeProceeds)}</dd>
+                        <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
+                          {formatCurrency(scenario.employeeProceeds)}
+                        </dd>
                       </div>
-                      <div className="rounded-2xl bg-white px-3 py-3">
+                      <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
                         <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Investor</dt>
-                        <dd className="mt-2 font-semibold text-slate-900">{formatCurrency(scenario.investorProceeds)}</dd>
+                        <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
+                          {formatCurrency(scenario.investorProceeds)}
+                        </dd>
                       </div>
                     </dl>
                   </div>
