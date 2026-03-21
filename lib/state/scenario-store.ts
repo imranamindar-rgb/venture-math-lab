@@ -6,7 +6,7 @@ import { createJSONStorage, persist, StateStorage } from "zustand/middleware";
 import { getScenarioPreset, scenarioPresets } from "@/data/presets";
 import { cloneValue } from "@/lib/compat";
 import { withNormalizedFounders } from "@/lib/founders";
-import { scenarioFileSchema, ScenarioConfig, ScenarioFileV1 } from "@/lib/sim/types";
+import { scenarioConfigSchema, scenarioFileSchema, ScenarioConfig, ScenarioFileV1 } from "@/lib/sim/types";
 
 export interface SavedScenario {
   id: string;
@@ -110,6 +110,59 @@ function withControls(config: ScenarioConfig): ScenarioConfig {
       paretoAlpha: config.controls?.paretoAlpha ?? 1.55,
     },
   });
+}
+
+function mergeScenarioConfig(base: ScenarioConfig, candidate: unknown): ScenarioConfig {
+  if (!candidate || typeof candidate !== "object") {
+    return withControls(base);
+  }
+
+  const raw = candidate as Partial<ScenarioConfig>;
+  const merged: ScenarioConfig = {
+    ...base,
+    ...raw,
+    capTable: {
+      ...base.capTable,
+      ...(raw.capTable ?? {}),
+    },
+    founders: raw.founders ?? base.founders,
+    safe: {
+      ...base.safe,
+      ...(raw.safe ?? {}),
+    },
+    note: {
+      ...base.note,
+      ...(raw.note ?? {}),
+    },
+    investor: {
+      ...base.investor,
+      ...(raw.investor ?? {}),
+    },
+    employee: {
+      ...base.employee,
+      ...(raw.employee ?? {}),
+    },
+    preferred: {
+      ...base.preferred,
+      ...(raw.preferred ?? {}),
+    },
+    operating: {
+      ...base.operating,
+      ...(raw.operating ?? {}),
+    },
+    secondary: {
+      ...base.secondary,
+      ...(raw.secondary ?? {}),
+    },
+    controls: {
+      ...base.controls,
+      ...(raw.controls ?? {}),
+    },
+    warningFlags: Array.isArray(raw.warningFlags) ? raw.warningFlags : base.warningFlags,
+  };
+
+  const parsed = scenarioConfigSchema.safeParse(merged);
+  return withControls(parsed.success ? parsed.data : base);
 }
 
 function markModified() {
@@ -225,13 +278,13 @@ export const useScenarioStore = create<ScenarioStore>()(
         return {
           ...currentState,
           ...typed,
-          active: withControls(typed?.active ?? currentState.active),
-          comparison: withControls(typed?.comparison ?? currentState.comparison),
+          active: mergeScenarioConfig(currentState.active, typed?.active),
+          comparison: mergeScenarioConfig(currentState.comparison, typed?.comparison),
           saved: savedEntries
             .filter((entry): entry is SavedScenario => Boolean(entry && entry.config))
             .map((entry) => ({
               ...entry,
-              config: withControls(entry.config),
+              config: mergeScenarioConfig(currentState.active, entry.config),
             })),
           lastModifiedAt: typed?.lastModifiedAt ?? currentState.lastModifiedAt,
           hasHydrated: currentState.hasHydrated,
