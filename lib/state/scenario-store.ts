@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist, StateStorage } from "zustand/middleware";
 
 import { getScenarioPreset, scenarioPresets } from "@/data/presets";
 import { cloneValue } from "@/lib/compat";
@@ -37,6 +37,47 @@ interface ScenarioStore {
 
 const defaultActive = getScenarioPreset("nvca_standard");
 const defaultComparison = getScenarioPreset("stress_case");
+
+const memoryFallback = new Map<string, string>();
+
+const safeStorage: StateStorage = {
+  getItem: (name) => {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        return window.localStorage.getItem(name);
+      }
+    } catch {
+      return memoryFallback.get(name) ?? null;
+    }
+
+    return memoryFallback.get(name) ?? null;
+  },
+  setItem: (name, value) => {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(name, value);
+        return;
+      }
+    } catch {
+      memoryFallback.set(name, value);
+      return;
+    }
+
+    memoryFallback.set(name, value);
+  },
+  removeItem: (name) => {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.removeItem(name);
+      }
+    } catch {
+      memoryFallback.delete(name);
+      return;
+    }
+
+    memoryFallback.delete(name);
+  },
+};
 
 function withControls(config: ScenarioConfig): ScenarioConfig {
   return withNormalizedFounders({
@@ -179,20 +220,24 @@ export const useScenarioStore = create<ScenarioStore>()(
       },
       merge: (persistedState, currentState) => {
         const typed = persistedState as Partial<ScenarioStore> | undefined;
+        const savedEntries = Array.isArray(typed?.saved) ? typed.saved : currentState.saved;
 
         return {
           ...currentState,
           ...typed,
           active: withControls(typed?.active ?? currentState.active),
           comparison: withControls(typed?.comparison ?? currentState.comparison),
-          saved: (typed?.saved ?? currentState.saved).map((entry) => ({
-            ...entry,
-            config: withControls(entry.config),
-          })),
+          saved: savedEntries
+            .filter((entry): entry is SavedScenario => Boolean(entry && entry.config))
+            .map((entry) => ({
+              ...entry,
+              config: withControls(entry.config),
+            })),
           lastModifiedAt: typed?.lastModifiedAt ?? currentState.lastModifiedAt,
           hasHydrated: currentState.hasHydrated,
         };
       },
+      storage: createJSONStorage(() => safeStorage),
       partialize: (state) => ({
         active: state.active,
         comparison: state.comparison,
