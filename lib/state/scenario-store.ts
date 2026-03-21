@@ -173,8 +173,25 @@ export const useScenarioStore = create<ScenarioStore>()(
     }),
     {
       name: "venture-math-lab-store",
+      version: 2,
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
+      },
+      merge: (persistedState, currentState) => {
+        const typed = persistedState as Partial<ScenarioStore> | undefined;
+
+        return {
+          ...currentState,
+          ...typed,
+          active: withControls(typed?.active ?? currentState.active),
+          comparison: withControls(typed?.comparison ?? currentState.comparison),
+          saved: (typed?.saved ?? currentState.saved).map((entry) => ({
+            ...entry,
+            config: withControls(entry.config),
+          })),
+          lastModifiedAt: typed?.lastModifiedAt ?? currentState.lastModifiedAt,
+          hasHydrated: currentState.hasHydrated,
+        };
       },
       partialize: (state) => ({
         active: state.active,
