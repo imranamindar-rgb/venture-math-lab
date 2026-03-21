@@ -1,3 +1,4 @@
+import { cloneValue } from "@/lib/compat";
 import { ScenarioConfig, StagePreset, stageOrder } from "@/lib/sim/types";
 
 export const stagePresets: Record<(typeof stageOrder)[number], StagePreset> = {
@@ -339,7 +340,7 @@ export const scenarioPresets: ScenarioConfig[] = [standardScenario, stressScenar
 
 export function getScenarioPreset(id: string): ScenarioConfig {
   const match = scenarioPresets.find((preset) => preset.id === id) ?? standardScenario;
-  return structuredClone(match);
+  return cloneValue(match);
 }
 
 export function getStageIndex(stage: (typeof stageOrder)[number]) {

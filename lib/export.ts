@@ -1,3 +1,4 @@
+import { replaceAllText } from "@/lib/compat";
 import { formatCurrency, formatPercent, formatMultiple } from "@/lib/format";
 import { ScenarioConfig, SimulationSummary } from "@/lib/sim/types";
 import { buildComparisonPayload, buildScenarioReportPayload } from "@/lib/reporting";
@@ -5,7 +6,7 @@ import { buildComparisonPayload, buildScenarioReportPayload } from "@/lib/report
 function escapeCsv(value: string | number) {
   const raw = String(value);
   if (raw.includes(",") || raw.includes("\n") || raw.includes("\"")) {
-    return `"${raw.replaceAll("\"", "\"\"")}"`;
+    return `"${replaceAllText(raw, "\"", "\"\"")}"`;
   }
   return raw;
 }

@@ -38,7 +38,7 @@ export function ReportWorkspace() {
   const active = useScenarioStore((state) => state.active);
   const hasHydrated = useScenarioStore((state) => state.hasHydrated);
   const updateActive = useScenarioStore((state) => state.updateActive);
-  const { run, summary, loading } = useSimulationRunner();
+  const { run, summary, loading, error: simulationError } = useSimulationRunner();
   const [sharedConfig, setSharedConfig] = useState<ScenarioConfig | null>(null);
   const [shareStatus, setShareStatus] = useState<"checking" | "active" | "shared" | "error">("checking");
   const [shareError, setShareError] = useState<string | null>(null);
@@ -75,11 +75,25 @@ export function ReportWorkspace() {
     run(reportConfig);
   }, [reportConfig, run]);
 
-  const basePayload = useMemo(() => (reportConfig ? buildScenarioBasePayload(reportConfig) : null), [reportConfig]);
-  const payload = useMemo(
-    () => (summary && reportConfig ? buildScenarioReportPayload(reportConfig, summary) : null),
-    [reportConfig, summary],
-  );
+  const reportState = useMemo(() => {
+    if (!reportConfig) {
+      return { basePayload: null, payload: null, renderError: null as string | null };
+    }
+
+    try {
+      const basePayload = buildScenarioBasePayload(reportConfig);
+      const payload = summary ? buildScenarioReportPayload(reportConfig, summary) : null;
+      return { basePayload, payload, renderError: null as string | null };
+    } catch {
+      return {
+        basePayload: null,
+        payload: null,
+        renderError: "The report could not render this scenario in the current browser. Try loading the scenario back into the calculator or using a shorter share link.",
+      };
+    }
+  }, [reportConfig, summary]);
+
+  const { basePayload, payload, renderError } = reportState;
 
   const handleCopyShareLink = async () => {
     if (typeof window === "undefined" || typeof navigator === "undefined" || !reportConfig) {
@@ -125,6 +139,37 @@ export function ReportWorkspace() {
             >
               Open calculator
             </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (renderError || simulationError) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <Card>
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Scenario report</p>
+          <h1 className="mt-2 font-heading text-4xl font-semibold">Board-ready venture math summary</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{renderError ?? simulationError}</p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/calculator"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white"
+            >
+              Open calculator
+            </Link>
+            {reportConfig ? (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  updateActive(reportConfig);
+                  setCopyStatus("Scenario loaded into the live workspace.");
+                }}
+              >
+                Load into workspace
+              </Button>
+            ) : null}
           </div>
         </Card>
       </div>

@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { getScenarioPreset, scenarioPresets } from "@/data/presets";
+import { cloneValue } from "@/lib/compat";
 import { withNormalizedFounders } from "@/lib/founders";
 import { scenarioFileSchema, ScenarioConfig, ScenarioFileV1 } from "@/lib/sim/types";
 
@@ -123,7 +124,7 @@ export const useScenarioStore = create<ScenarioStore>()(
             id: `${target}_${Date.now()}`,
             name: name?.trim() || `${scenario.name} snapshot`,
             createdAt: new Date().toISOString(),
-            config: structuredClone(scenario),
+            config: cloneValue(scenario),
           };
           return {
             saved: [entry, ...state.saved].slice(0, 12),
@@ -136,7 +137,7 @@ export const useScenarioStore = create<ScenarioStore>()(
             return state;
           }
 
-          const updated = withControls(structuredClone(saved.config));
+          const updated = withControls(cloneValue(saved.config));
           return target === "active"
             ? { active: updated, lastModifiedAt: markModified() }
             : { comparison: updated, lastModifiedAt: markModified() };

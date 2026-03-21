@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SupportBadge } from "@/components/ui/SupportBadge";
 import { analyzeScenario } from "@/lib/scenario-diagnostics";
+import { replaceAllText } from "@/lib/compat";
 import { buildScenarioCsv } from "@/lib/export";
 import { buildScenarioReportPath, buildScenarioReportUrl } from "@/lib/share";
 import { formatCurrency } from "@/lib/format";
@@ -192,7 +193,7 @@ export function ActiveScenarioPanel({
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Current instrument</p>
-                <p className="mt-2 font-semibold text-slate-900">{active.currentRoundKind.replaceAll("_", " ")}</p>
+                <p className="mt-2 font-semibold text-slate-900">{replaceAllText(active.currentRoundKind, "_", " ")}</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Quick answer</p>

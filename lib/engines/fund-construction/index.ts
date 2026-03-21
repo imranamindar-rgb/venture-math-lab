@@ -760,7 +760,7 @@ function buildReserveConstraintMap(config: FundConstructionConfig): ReserveConst
           (right.feasible ? 0.4 : -0.4);
         return rightScore - leftScore;
       })
-      .at(0) ?? null;
+      [0] ?? null;
 
   return {
     fundSizes,

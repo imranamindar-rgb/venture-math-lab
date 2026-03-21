@@ -1,4 +1,5 @@
 import { ScenarioConfig } from "@/lib/sim/types";
+import { replaceAllText } from "@/lib/compat";
 import { getCurrentFinancing } from "@/lib/current-financing";
 import { sumFounderOwnership } from "@/lib/founders";
 
@@ -185,7 +186,7 @@ export function analyzeScenario(config: ScenarioConfig): ScenarioDiagnostics {
 
   const assumptions: ScenarioAssumption[] = [
     { label: "Current stage", value: config.currentStage.replace("_", " ") },
-    { label: "Current round type", value: config.currentRoundKind.replaceAll("_", " ") },
+    { label: "Current round type", value: replaceAllText(config.currentRoundKind, "_", " ") },
     { label: "Current raise", value: formatCurrencyCompact(financing.totalRoundRaise) },
     { label: "Modeled investor at risk", value: formatCurrencyCompact(financing.modeledInvestorCheck) },
     { label: "Reference post-money", value: formatCurrencyCompact(financing.referencePostMoney) },
@@ -194,7 +195,7 @@ export function analyzeScenario(config: ScenarioConfig): ScenarioDiagnostics {
     { label: "Option pool target", value: formatPercentPoint(config.optionPoolTargetPercent * 100) },
     {
       label: "Preferred terms",
-      value: `${config.preferred.liquidationMultiple.toFixed(1)}x ${config.preferred.participationMode.replace("_", " ")} / ${config.preferred.antiDilutionMode.replaceAll("_", " ")}`,
+      value: `${config.preferred.liquidationMultiple.toFixed(1)}x ${config.preferred.participationMode.replace("_", " ")} / ${replaceAllText(config.preferred.antiDilutionMode, "_", " ")}`,
     },
     { label: "Cash on hand", value: formatCurrencyCompact(config.operating.cashOnHand) },
     { label: "Monthly burn", value: formatCurrencyCompact(config.operating.monthlyBurn) },

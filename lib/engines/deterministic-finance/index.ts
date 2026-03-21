@@ -30,6 +30,7 @@ import {
   stageOrder,
 } from "@/lib/sim/types";
 import { getCurrentFinancing } from "@/lib/current-financing";
+import { cloneValue, lastItem } from "@/lib/compat";
 
 export interface FormulaLine {
   label: string;
@@ -262,7 +263,7 @@ function buildOptionPoolShuffleIllustration(config: ScenarioConfig): OptionPoolS
 
   for (let iteration = 0; iteration < 40; iteration += 1) {
     const mid = (low + high) / 2;
-    const trialSnapshot = structuredClone(snapshotPreMoney);
+    const trialSnapshot = cloneValue(snapshotPreMoney);
     trialSnapshot.employeePool += mid;
     issuePreferredRound(trialSnapshot, roundPreMoney, roundSize, config, "Pool shuffle illustration", seniority);
 
@@ -379,7 +380,7 @@ function buildLiquidationDeadZone(
 
   const deadZoneEndsAt =
     points.find((point) => point.preferredConverted || point.founderNet >= 1_000_000)?.exitValue ??
-    Math.min(maxExit, points.at(-1)?.exitValue ?? maxExit);
+    Math.min(maxExit, lastItem(points)?.exitValue ?? maxExit);
 
   return {
     deadZoneEndsAt,
@@ -447,7 +448,7 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
 
   const path = projectDeterministicPath(config);
   const terminalInvestorOwnership =
-    path.roundProjection.at(-1)?.investorOwnership ?? currentInvestorOwnership;
+    lastItem(path.roundProjection)?.investorOwnership ?? currentInvestorOwnership;
   const breakEvenExit = calculateRequiredExitValue(path.snapshot.modeledInvestorInvested, terminalInvestorOwnership);
   const threeXExit = calculateRequiredExitValue(path.snapshot.modeledInvestorInvested * 3, terminalInvestorOwnership);
   const founderTenMillionExit = findExitForFounderTarget(
@@ -537,7 +538,7 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
     benchmarkNextStepUp < 1.25
       ? "Median step-up to the next stage is thin. This path is vulnerable to flat or down rounds."
       : "Median next-round step-up is healthy enough that dilution pressure is not doing all the work.",
-    (path.roundProjection.at(-1)?.founderOwnership ?? getFounderOwnership(path.snapshot)) < 0.2
+    (lastItem(path.roundProjection)?.founderOwnership ?? getFounderOwnership(path.snapshot)) < 0.2
       ? "Founders drift below 20% on the deterministic path before the terminal stage."
       : "Founder ownership stays above 20% on the deterministic path.",
     "Option-pool shuffle math below compares the founder hit when the same pool top-up is forced pre-money versus after the round.",

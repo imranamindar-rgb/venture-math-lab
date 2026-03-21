@@ -39,6 +39,7 @@ import {
   stageOrder,
 } from "@/lib/sim/types";
 import { getCurrentFinancing } from "@/lib/current-financing";
+import { cloneValue, lastItem } from "@/lib/compat";
 
 function sampleCappedPareto(
   rng: ReturnType<typeof createRng>,
@@ -375,15 +376,15 @@ function buildSummary(config: ScenarioConfig, paths: PathOutcome[]): SimulationS
   const dilutionAttribution = [
     {
       label: "Ownership lost from start",
-      probability: Math.max(0, averageInitialFounder - (paths[0]?.ownershipPath.at(-1)?.founderPct ?? 0)),
+      probability: Math.max(0, averageInitialFounder - (lastItem(paths[0]?.ownershipPath ?? [])?.founderPct ?? 0)),
     },
     {
       label: "Option pool pressure",
-      probability: percentile(paths.map((path) => path.ownershipPath.at(-1)?.poolPct ?? 0), 0.5),
+      probability: percentile(paths.map((path) => lastItem(path.ownershipPath)?.poolPct ?? 0), 0.5),
     },
     {
       label: "Preferred creep",
-      probability: percentile(paths.map((path) => path.ownershipPath.at(-1)?.priorInvestorPct ?? 0), 0.5),
+      probability: percentile(paths.map((path) => lastItem(path.ownershipPath)?.priorInvestorPct ?? 0), 0.5),
     },
   ];
 
@@ -486,7 +487,7 @@ function buildSummary(config: ScenarioConfig, paths: PathOutcome[]): SimulationS
 
 export function sanitizeScenario(config: ScenarioConfig): ScenarioConfig {
   const presetMatch = scenarioPresets.find((preset) => preset.id === config.id);
-  const safeConfig = structuredClone(config);
+  const safeConfig = cloneValue(config);
   safeConfig.controls = {
     iterations: clamp(Math.round(config.controls.iterations), 500, 20_000),
     seed: Math.max(1, Math.round(config.controls.seed)),

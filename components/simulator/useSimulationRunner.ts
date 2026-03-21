@@ -9,6 +9,7 @@ export function useSimulationRunner() {
   const workerRef = useRef<Worker | null>(null);
   const [summary, setSummary] = useState<SimulationSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -17,7 +18,16 @@ export function useSimulationRunner() {
         if (event.data.type === "done") {
           setSummary(event.data.summary);
           setLoading(false);
+          setError(null);
         }
+      };
+      workerRef.current.onerror = () => {
+        setLoading(false);
+        setError("The Monte Carlo worker failed while preparing the report.");
+      };
+      workerRef.current.onmessageerror = () => {
+        setLoading(false);
+        setError("The Monte Carlo worker returned an unreadable payload.");
       };
     } catch {
       workerRef.current = null;
@@ -30,22 +40,34 @@ export function useSimulationRunner() {
 
   const run = useCallback((config: ScenarioConfig) => {
     setLoading(true);
+    setError(null);
 
     if (!workerRef.current) {
-      setSummary(runMonteCarlo(config));
-      setLoading(false);
+      try {
+        setSummary(runMonteCarlo(config));
+        setLoading(false);
+      } catch {
+        setLoading(false);
+        setError("The simulation engine failed for this scenario in the current browser.");
+      }
       return;
     }
 
-    workerRef.current.postMessage({
-      type: "run",
-      config,
-    });
+    try {
+      workerRef.current.postMessage({
+        type: "run",
+        config,
+      });
+    } catch {
+      setLoading(false);
+      setError("The browser could not send this scenario to the simulation worker.");
+    }
   }, []);
 
   return {
     summary,
     loading,
     run,
+    error,
   };
 }

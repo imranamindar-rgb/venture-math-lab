@@ -12,6 +12,7 @@ import { analyzeScenario } from "@/lib/scenario-diagnostics";
 import { getCurrentFinancing } from "@/lib/current-financing";
 import { buildComparisonCsv, buildComparisonMarkdown } from "@/lib/export";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { replaceAllText } from "@/lib/compat";
 import { buildComparisonPayload } from "@/lib/reporting";
 
 function downloadText(filename: string, payload: string, type: string) {
@@ -204,7 +205,7 @@ export function CompareWorkspace() {
                 <li className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
                   <span>Round type</span>
                   <span className="font-semibold">
-                    {active.currentRoundKind.replaceAll("_", " ")} vs {comparison.currentRoundKind.replaceAll("_", " ")}
+                    {replaceAllText(active.currentRoundKind, "_", " ")} vs {replaceAllText(comparison.currentRoundKind, "_", " ")}
                   </span>
                 </li>
                 <li className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
