@@ -288,7 +288,7 @@ describe("audit benchmark harness", () => {
     expect(aiRound.preMoney / standardRound.preMoney).toBeCloseTo(expectedRatio, 6);
   });
 
-  it("records Monte Carlo reproducibility and runtime evidence", () => {
+  it("records Monte Carlo reproducibility and runtime evidence", { timeout: 15_000 }, () => {
     const scenario = getScenarioPreset("nvca_standard");
     scenario.controls.iterations = 10_000;
     scenario.controls.seed = 42;

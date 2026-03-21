@@ -20,6 +20,7 @@ import {
   getPreferredSeries,
   getPreferredShares,
   getPriorInvestorOwnership,
+  getNextPreferredSeniority,
 } from "@/lib/engines/cap-table-waterfall/cap-table";
 import { getReferencePostMoney, projectMedianRound } from "@/lib/engines/cap-table-waterfall/rounds";
 import { maybeConvertNote, maybeConvertSafe } from "@/lib/engines/cap-table-waterfall/unpriced";
@@ -37,16 +38,24 @@ export interface CapTableWaterfallScenario {
   label: string;
   exitValue: number;
   founderProceeds: number;
+  founderRealizedSecondary: number;
   founderBreakdown: {
     id: string;
     name: string;
     proceeds: number;
   }[];
   employeeProceeds: number;
+  employeeGrossProceeds: number;
+  employeeExerciseCost: number;
+  employeeRealizedSecondary: number;
   investorProceeds: number;
+  modeledPreferredProceeds: number;
   priorInvestorProceeds: number;
+  secondaryCommonProceeds: number;
   noteProceeds: number;
   safeProceeds: number;
+  exitAllocated: number;
+  exitGap: number;
   preferredConverted: boolean;
   preferredStructure: string;
   seriesBreakdown: Array<{
@@ -67,6 +76,26 @@ export interface CapTableWaterfallSummary {
   convertedWaterfalls: CapTableWaterfallScenario[];
   fullyDilutedShares: number;
   convertedFullyDilutedShares: number;
+  safeConversionBridge?: {
+    qualifiedPreMoney: number;
+    issuedShares: number;
+    capIssuedShares: number;
+    roundIssuedShares: number;
+    conversionDriver: "cap" | "round_price";
+    founderBefore: number;
+    founderAfter: number;
+    employeeBefore: number;
+    employeeAfter: number;
+    priorBefore: number;
+    priorAfter: number;
+    safeOwnershipAfter: number;
+  };
+  noteConversionBridge?: {
+    qualifiedPreMoney: number;
+    accruedPrincipal: number;
+    conversionPrice: number;
+    conversionDriver: "cap" | "discount";
+  };
   warnings: string[];
 }
 
@@ -161,24 +190,47 @@ function buildWaterfallScenarios(
       getEmployeeExerciseCost(config, snapshot, scenario.exitValue),
       config.preferred,
     );
+    const modeledPreferredProceeds = waterfall.seriesPayouts
+      .filter((entry) => entry.ownerGroup === "modeled")
+      .reduce((total, entry) => total + entry.totalPayout, 0);
+    const founderExitProceeds = waterfall.founderPayout;
+    const employeeGrossProceeds = waterfall.employeeGrossPayout;
+    const employeeNetProceeds = waterfall.employeeNetPayout;
+    const secondaryCommonProceeds = waterfall.secondaryCommonPayout;
+    const exitAllocated =
+      waterfall.notePayout +
+      waterfall.safePayout +
+      waterfall.priorInvestorPayout +
+      modeledPreferredProceeds +
+      founderExitProceeds +
+      employeeGrossProceeds +
+      secondaryCommonProceeds;
 
     return {
       label: scenario.label,
       exitValue: scenario.exitValue,
-      founderProceeds: waterfall.founderPayout + snapshot.realizedFounderSecondary,
+      founderProceeds: founderExitProceeds,
+      founderRealizedSecondary: snapshot.realizedFounderSecondary,
       founderBreakdown: founders.map((founder) => {
         const weight = founderTotalPercent > 0 ? founder.ownershipPercent / founderTotalPercent : 0;
         return {
           id: founder.id,
           name: founder.name,
-          proceeds: (waterfall.founderPayout + snapshot.realizedFounderSecondary) * weight,
+          proceeds: founderExitProceeds * weight,
         };
       }),
-      employeeProceeds: waterfall.employeeNetPayout + snapshot.realizedEmployeeSecondary,
+      employeeProceeds: employeeNetProceeds,
+      employeeGrossProceeds,
+      employeeExerciseCost: waterfall.employeeGrossPayout - waterfall.employeeNetPayout,
+      employeeRealizedSecondary: snapshot.realizedEmployeeSecondary,
       investorProceeds: waterfall.investorPayout,
+      modeledPreferredProceeds,
       priorInvestorProceeds: waterfall.priorInvestorPayout,
+      secondaryCommonProceeds,
       noteProceeds: waterfall.notePayout,
       safeProceeds: waterfall.safePayout,
+      exitAllocated,
+      exitGap: scenario.exitValue - exitAllocated,
       preferredConverted: waterfall.preferredConverted,
       preferredStructure: waterfall.preferredStructure,
       seriesBreakdown: waterfall.seriesPayouts.map((entry) => ({
@@ -202,12 +254,40 @@ export function summarizeCapTableWaterfall(config: ScenarioConfig): CapTableWate
   const previewStage = stageOrder[Math.min(stageOrder.length - 1, getStageIndex(config.currentStage) + 1)] as FundingStage;
   const qualifiedPreMoney = projectMedianRound(previewStage, getReferencePostMoney(config), config).preMoney;
 
+  const founderBefore = getFounderOwnership(currentSnapshot);
+  const employeeBefore = getEmployeeOwnership(currentSnapshot);
+  const priorBefore = getPriorInvestorOwnership(currentSnapshot);
+  let safeConversionBridge: CapTableWaterfallSummary["safeConversionBridge"];
+  let noteConversionBridge: CapTableWaterfallSummary["noteConversionBridge"];
+
   if (config.currentRoundKind === "safe_post_money" && config.safe.enabled) {
-    maybeConvertSafe(convertedSnapshot, config);
+    const conversionSeniority = getNextPreferredSeniority(convertedSnapshot);
+    const safePreview = maybeConvertSafe(convertedSnapshot, config, qualifiedPreMoney, true, conversionSeniority);
+    safeConversionBridge = {
+      qualifiedPreMoney,
+      issuedShares: safePreview.issuedShares,
+      capIssuedShares: safePreview.capIssuedShares,
+      roundIssuedShares: safePreview.roundIssuedShares,
+      conversionDriver: safePreview.conversionDriver,
+      founderBefore,
+      founderAfter: getFounderOwnership(convertedSnapshot),
+      employeeBefore,
+      employeeAfter: getEmployeeOwnership(convertedSnapshot),
+      priorBefore,
+      priorAfter: getPriorInvestorOwnership(convertedSnapshot),
+      safeOwnershipAfter: getInvestorOwnership(convertedSnapshot),
+    };
   }
 
   if (config.currentRoundKind === "convertible_note_cap" && config.note.enabled) {
-    maybeConvertNote(convertedSnapshot, config, qualifiedPreMoney, conversionMonths);
+    const conversionSeniority = getNextPreferredSeniority(convertedSnapshot);
+    const notePreview = maybeConvertNote(convertedSnapshot, config, qualifiedPreMoney, conversionMonths, conversionSeniority);
+    noteConversionBridge = {
+      qualifiedPreMoney,
+      accruedPrincipal: notePreview.accruedPrincipal,
+      conversionPrice: notePreview.conversionPrice,
+      conversionDriver: notePreview.conversionDriver,
+    };
   }
 
   const referencePostMoney = financing.referencePostMoney;
@@ -220,7 +300,7 @@ export function summarizeCapTableWaterfall(config: ScenarioConfig): CapTableWate
   const warnings = [
     ...financing.warnings,
     config.currentRoundKind === "safe_post_money" && config.safe.enabled
-      ? "SAFE ownership is still an estimate until the next qualified financing fixes the share count, but low-liquidity exits now pay the SAFE before the preferred/common waterfall."
+      ? "SAFE conversion now spawns a shadow series with its own conversion-price preference, and the bridge shows exactly how that dilution lands on existing holders."
       : "The current instrument already has priced ownership rather than future conversion logic.",
     config.currentRoundKind === "convertible_note_cap" && config.note.enabled
       ? "The note stays senior to equity in weak outcomes, then converts at the better of cap or discount in the qualified-financing preview."
@@ -243,6 +323,8 @@ export function summarizeCapTableWaterfall(config: ScenarioConfig): CapTableWate
     convertedWaterfalls: buildWaterfallScenarios(config, convertedSnapshot, exitValues),
     fullyDilutedShares: getFullyDilutedShares(currentSnapshot),
     convertedFullyDilutedShares: getFullyDilutedShares(convertedSnapshot),
+    safeConversionBridge,
+    noteConversionBridge,
     warnings,
   };
 }

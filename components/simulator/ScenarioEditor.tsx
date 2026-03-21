@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 
 import { stagePresets } from "@/data/presets";
@@ -53,6 +53,7 @@ function resizeFounders(config: ScenarioConfig, count: number) {
 }
 
 export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEditorProps) {
+  const [editorMode, setEditorMode] = useState<"quick" | "standard" | "advanced" | "legal">("quick");
   const stagePreset = stagePresets[config.currentStage];
   const founders = normalizeFounders(config.founders, config.capTable.founderPercent);
   const founderTotal = sumFounderOwnership(founders, config.capTable.founderPercent);
@@ -63,6 +64,21 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
     config.capTable.employeeCommonPercent +
     config.capTable.employeePoolPercent +
     config.capTable.priorInvestorPercent;
+  const showStandard = editorMode !== "quick";
+  const showAdvanced = editorMode === "advanced";
+  const showLegal = editorMode === "legal" || editorMode === "advanced";
+  const primaryAmountLabel =
+    config.currentRoundKind === "safe_post_money"
+      ? "SAFE investment"
+      : config.currentRoundKind === "convertible_note_cap"
+        ? "Note principal"
+        : "Investor initial check";
+  const primaryAmountHint =
+    config.currentRoundKind === "safe_post_money"
+      ? "This is the modeled SAFE purchase amount for the current investor."
+      : config.currentRoundKind === "convertible_note_cap"
+        ? "This is the modeled note principal for the current investor."
+        : "This is the modeled priced-round check for the current investor.";
 
   return (
     <div className="space-y-8">
@@ -104,34 +120,68 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
               <option value="priced_preferred">Priced preferred</option>
             </select>
           </Field>
-          <Field
-            label="Market regime"
-            hint="Bull markets widen valuation step-ups and shrink down-round pressure. Bear markets do the opposite."
-          >
-            <select
-              value={config.marketOverlay}
-              onChange={(event) => onChange({ marketOverlay: event.target.value as MarketOverlay })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
-            >
-              <option value="bull">Bull</option>
-              <option value="base">Base</option>
-              <option value="bear">Bear</option>
-            </select>
-          </Field>
-          <Field
-            label="Sector overlay"
-            hint="AI premium boosts both pricing and terminal upside so you can compare normal venture math against hype cycles."
-          >
-            <select
-              value={config.sectorOverlay}
-              onChange={(event) => onChange({ sectorOverlay: event.target.value as SectorOverlay })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
-            >
-              <option value="standard">Standard</option>
-              <option value="ai_premium">AI premium</option>
-            </select>
-          </Field>
+          {showStandard ? (
+            <>
+              <Field
+                label="Market regime"
+                hint="Bull markets widen valuation step-ups and shrink down-round pressure. Bear markets do the opposite."
+              >
+                <select
+                  value={config.marketOverlay}
+                  onChange={(event) => onChange({ marketOverlay: event.target.value as MarketOverlay })}
+                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+                >
+                  <option value="bull">Bull</option>
+                  <option value="base">Base</option>
+                  <option value="bear">Bear</option>
+                </select>
+              </Field>
+              <Field
+                label="Sector overlay"
+                hint="AI premium boosts both pricing and terminal upside so you can compare normal venture math against hype cycles."
+              >
+                <select
+                  value={config.sectorOverlay}
+                  onChange={(event) => onChange({ sectorOverlay: event.target.value as SectorOverlay })}
+                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+                >
+                  <option value="standard">Standard</option>
+                  <option value="ai_premium">AI premium</option>
+                </select>
+              </Field>
+            </>
+          ) : null}
         </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: "quick", label: "Quick mode" },
+            { id: "standard", label: "Standard mode" },
+            { id: "advanced", label: "Advanced mode" },
+            { id: "legal", label: "Legal terms" },
+          ].map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              onClick={() => setEditorMode(mode.id as typeof editorMode)}
+              className={
+                editorMode === mode.id
+                  ? "rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white"
+                  : "rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600"
+              }
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-sm leading-6 text-slate-500">
+          {editorMode === "quick"
+            ? "Quick mode exposes only the handful of inputs needed to get a first answer."
+            : editorMode === "standard"
+              ? "Standard mode adds founder ownership and the main fundraising levers without the operator and legal edge-case fields."
+              : editorMode === "legal"
+                ? "Legal terms mode focuses on SAFE, note, preference, and anti-dilution settings."
+                : "Advanced mode exposes the full model, including operating reality and simulation controls."}
+        </p>
         <div className="rounded-panel border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
           <p className="font-semibold">{stagePreset.label} benchmark</p>
           <p className="mt-2">
@@ -223,6 +273,26 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
               onValueChange={(value) => onChange({ currentRoundSize: value })}
             />
           </Field>
+          <Field label={primaryAmountLabel} hint={primaryAmountHint}>
+            {config.currentRoundKind === "safe_post_money" ? (
+              <MoneyInput
+                value={config.safe.investment}
+                onValueChange={(value) => onNestedChange("safe", { investment: value })}
+              />
+            ) : config.currentRoundKind === "convertible_note_cap" ? (
+              <MoneyInput
+                value={config.note.principal}
+                onValueChange={(value) => onNestedChange("note", { principal: value })}
+              />
+            ) : (
+              <MoneyInput
+                value={config.investor.initialCheck}
+                onValueChange={(value) => onNestedChange("investor", { initialCheck: value })}
+              />
+            )}
+          </Field>
+          {showStandard ? (
+            <>
           <Field
             label="Number of cofounders"
             hint="Set how many founders currently share the fully diluted founder stake. Each founder can then be named and sized separately."
@@ -299,7 +369,10 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
               className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
             />
           </Field>
+            </>
+          ) : null}
         </div>
+        {showStandard ? (
         <div className="rounded-panel border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -360,8 +433,10 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             ))}
           </div>
         </div>
+        ) : null}
       </section>
 
+      {showStandard || showLegal ? (
       <section className="space-y-4">
         <div>
           <h3 className="font-heading text-lg font-semibold">Instrument terms</h3>
@@ -370,101 +445,118 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field
-            label="SAFE post-money cap"
-            hint="For post-money SAFEs, a lower cap locks more future ownership for the investor before the Series A price is known."
-          >
-            <MoneyInput
-              value={config.safe.postMoneyCap}
-              onValueChange={(value) => onNestedChange("safe", { postMoneyCap: value })}
-            />
-          </Field>
-          <Field
-            label="SAFE investment"
-            hint="This check converts when a qualified financing happens and adds to the investor's preference stack."
-          >
-            <MoneyInput
-              value={config.safe.investment}
-              onValueChange={(value) => onNestedChange("safe", { investment: value })}
-            />
-          </Field>
-          <Field
-            label="Preferred participation"
-            hint="Non-participating preferred takes either the preference or common conversion. Participating preferred takes the preference first, then shares again in the residual common pool."
-          >
-            <select
-              value={config.preferred.participationMode}
-              onChange={(event) =>
-                onNestedChange("preferred", {
-                  participationMode: event.target.value as "non_participating" | "participating",
-                })
-              }
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
-            >
-              <option value="non_participating">Non-participating</option>
-              <option value="participating">Participating</option>
-            </select>
-          </Field>
-          <Field
-            label="Liquidation multiple"
-            hint="Standard venture terms are usually 1x. Higher multiples protect investors more aggressively in modest exits."
-          >
-            <input
-              type="number"
-              min={1}
-              max={3}
-              step="0.1"
-              value={config.preferred.liquidationMultiple}
-              onChange={(event) =>
-                onNestedChange("preferred", {
-                  liquidationMultiple: numberValue(event),
-                })
-              }
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
-            />
-          </Field>
-          <Field
-            label="Anti-dilution mode"
-            hint="Use this to stress how existing preferred stock resets conversion price in a down round. Broad weighted average is the standard-friendly approximation."
-          >
-            <select
-              value={config.preferred.antiDilutionMode}
-              onChange={(event) =>
-                onNestedChange("preferred", {
-                  antiDilutionMode: event.target.value as "none" | "broad_weighted_average" | "full_ratchet",
-                })
-              }
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
-            >
-              <option value="none">None</option>
-              <option value="broad_weighted_average">Broad weighted average</option>
-              <option value="full_ratchet">Full ratchet</option>
-            </select>
-          </Field>
-          <Field
-            label="Note cap"
-            hint="Notes price as the better of cap or discount and stay senior to equity in weak exits, so they can be harsher than a clean equity round."
-          >
-            <MoneyInput
-              value={config.note.preMoneyCap}
-              onValueChange={(value) => onNestedChange("note", { preMoneyCap: value })}
-            />
-          </Field>
-          <Field
-            label="Note discount rate"
-            hint="If the next round prices below the cap economics, the discount can still give the note holder a cheaper share price."
-          >
-            <input
-              type="number"
-              step="0.01"
-              value={config.note.discountRate}
-              onChange={(event) => onNestedChange("note", { discountRate: numberValue(event) })}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
-            />
-          </Field>
+          {config.currentRoundKind === "safe_post_money" || showLegal ? (
+            <>
+              <Field
+                label="SAFE post-money cap"
+                hint="For post-money SAFEs, a lower cap locks more future ownership for the investor before the Series A price is known."
+              >
+                <MoneyInput
+                  value={config.safe.postMoneyCap}
+                  onValueChange={(value) => onNestedChange("safe", { postMoneyCap: value })}
+                />
+              </Field>
+              <Field
+                label="SAFE discount rate"
+                hint="Optional bridge-round discount. The qualified-financing preview converts the SAFE at the better of cap or discounted round price."
+              >
+                <input
+                  type="number"
+                  step="0.01"
+                  value={config.safe.discountRate}
+                  onChange={(event) => onNestedChange("safe", { discountRate: numberValue(event) })}
+                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+                />
+              </Field>
+            </>
+          ) : null}
+          {config.currentRoundKind === "convertible_note_cap" || showLegal ? (
+            <>
+              <Field
+                label="Note cap"
+                hint="Notes price as the better of cap or discount and stay senior to equity in weak exits, so they can be harsher than a clean equity round."
+              >
+                <MoneyInput
+                  value={config.note.preMoneyCap}
+                  onValueChange={(value) => onNestedChange("note", { preMoneyCap: value })}
+                />
+              </Field>
+              <Field
+                label="Note discount rate"
+                hint="If the next round prices below the cap economics, the discount can still give the note holder a cheaper share price."
+              >
+                <input
+                  type="number"
+                  step="0.01"
+                  value={config.note.discountRate}
+                  onChange={(event) => onNestedChange("note", { discountRate: numberValue(event) })}
+                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+                />
+              </Field>
+            </>
+          ) : null}
+          {showLegal ? (
+            <>
+              <Field
+                label="Preferred participation"
+                hint="Non-participating preferred takes either the preference or common conversion. Participating preferred takes the preference first, then shares again in the residual common pool."
+              >
+                <select
+                  value={config.preferred.participationMode}
+                  onChange={(event) =>
+                    onNestedChange("preferred", {
+                      participationMode: event.target.value as "non_participating" | "participating",
+                    })
+                  }
+                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+                >
+                  <option value="non_participating">Non-participating</option>
+                  <option value="participating">Participating</option>
+                </select>
+              </Field>
+              <Field
+                label="Liquidation multiple"
+                hint="Standard venture terms are usually 1x. Higher multiples protect investors more aggressively in modest exits."
+              >
+                <input
+                  type="number"
+                  min={1}
+                  max={3}
+                  step="0.1"
+                  value={config.preferred.liquidationMultiple}
+                  onChange={(event) =>
+                    onNestedChange("preferred", {
+                      liquidationMultiple: numberValue(event),
+                    })
+                  }
+                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+                />
+              </Field>
+              <Field
+                label="Anti-dilution mode"
+                hint="Use this to stress how existing preferred stock resets conversion price in a down round. Broad weighted average is the standard-friendly approximation."
+              >
+                <select
+                  value={config.preferred.antiDilutionMode}
+                  onChange={(event) =>
+                    onNestedChange("preferred", {
+                      antiDilutionMode: event.target.value as "none" | "broad_weighted_average" | "full_ratchet",
+                    })
+                  }
+                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+                >
+                  <option value="none">None</option>
+                  <option value="broad_weighted_average">Broad weighted average</option>
+                  <option value="full_ratchet">Full ratchet</option>
+                </select>
+              </Field>
+            </>
+          ) : null}
         </div>
       </section>
+      ) : null}
 
+      {showAdvanced ? (
       <section className="space-y-4">
         <div>
           <h3 className="font-heading text-lg font-semibold">Operating reality</h3>
@@ -583,7 +675,9 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
           </Field>
         </div>
       </section>
+      ) : null}
 
+      {showStandard || showAdvanced ? (
       <section className="space-y-4">
         <div>
           <h3 className="font-heading text-lg font-semibold">Stakeholder controls</h3>
@@ -592,15 +686,6 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field
-            label="Investor initial check"
-            hint="Use this for the modeled investor's priced-round check. If the current instrument is a SAFE or note, the simulator follows SAFE investment or note principal instead when they differ."
-          >
-            <MoneyInput
-              value={config.investor.initialCheck}
-              onValueChange={(value) => onNestedChange("investor", { initialCheck: value })}
-            />
-          </Field>
           <Field
             label="Reserve multiple"
             hint="Set how much follow-on capital the investor can reserve relative to the first check before pro rata runs out."
@@ -663,8 +748,45 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
               className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
             />
           </Field>
+          {showAdvanced ? (
+            <Field
+              label="Monte Carlo seed"
+              hint="Fixed seeds make the simulation reproducible for memos, teaching, and review."
+            >
+              <input
+                type="number"
+                step="1"
+                value={config.controls.seed}
+                onChange={(event) =>
+                  onNestedChange("controls", {
+                    seed: numberValue(event),
+                  })
+                }
+                className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              />
+            </Field>
+          ) : null}
+          {showAdvanced ? (
+            <Field
+              label="Pareto alpha"
+              hint="Lower alpha produces fatter venture tails and more extreme outliers. Higher alpha compresses the tail toward more ordinary outcomes."
+            >
+              <input
+                type="number"
+                step="0.05"
+                value={config.controls.paretoAlpha}
+                onChange={(event) =>
+                  onNestedChange("controls", {
+                    paretoAlpha: numberValue(event),
+                  })
+                }
+                className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm"
+              />
+            </Field>
+          ) : null}
         </div>
       </section>
+      ) : null}
     </div>
   );
 }

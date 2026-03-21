@@ -194,6 +194,7 @@ const standardScenario: ScenarioConfig = {
     enabled: true,
     investment: 3_800_000,
     postMoneyCap: 19_600_000,
+    discountRate: 0,
   },
   note: {
     enabled: false,
@@ -240,6 +241,7 @@ const standardScenario: ScenarioConfig = {
   controls: {
     iterations: 10_000,
     seed: 42,
+    paretoAlpha: 1.55,
   },
   warningFlags: [],
 };
@@ -278,6 +280,7 @@ const stressScenario: ScenarioConfig = {
     enabled: false,
     investment: 0,
     postMoneyCap: 18_000_000,
+    discountRate: 0,
   },
   note: {
     enabled: true,
@@ -324,6 +327,7 @@ const stressScenario: ScenarioConfig = {
   controls: {
     iterations: 10_000,
     seed: 84,
+    paretoAlpha: 1.55,
   },
   warningFlags: [
     "Capped notes stay senior to common in weak outcomes and can absorb more value than founders expect.",

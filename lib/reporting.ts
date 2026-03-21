@@ -23,6 +23,21 @@ export interface ScenarioReportPayload {
   executiveSummary: string[];
 }
 
+export interface ScenarioReportBasePayload {
+  generatedAt: string;
+  methodologyVersion: string;
+  engineVersion: string;
+  runId: string;
+  config: ScenarioConfig;
+  diagnostics: ReturnType<typeof analyzeScenario>;
+  financing: ReturnType<typeof getCurrentFinancing>;
+  deterministic: ReturnType<typeof summarizeDeterministicFinance>;
+  capTable: ReturnType<typeof summarizeCapTableWaterfall>;
+  operator: ReturnType<typeof summarizeOperatorIntelligence>;
+  topWarnings: string[];
+  executiveSummary: string[];
+}
+
 export interface ComparisonCard {
   label: string;
   baseline: string;
@@ -45,13 +60,12 @@ function maybeRunSimulation(config: ScenarioConfig, provided?: SimulationSummary
   return provided ?? runMonteCarlo(config);
 }
 
-export function buildScenarioReportPayload(config: ScenarioConfig, provided?: SimulationSummary): ScenarioReportPayload {
+export function buildScenarioBasePayload(config: ScenarioConfig): ScenarioReportBasePayload {
   const diagnostics = analyzeScenario(config);
   const financing = getCurrentFinancing(config);
   const deterministic = summarizeDeterministicFinance(config);
   const capTable = summarizeCapTableWaterfall(config);
   const operator = summarizeOperatorIntelligence(config);
-  const simulation = maybeRunSimulation(config, provided);
   const topWarnings = [...diagnostics.issues.map((issue) => issue.detail), ...deterministic.warnings, ...operator.warnings].slice(0, 6);
   const preferredSeriesCount = capTable.currentRows.filter((row) => row.category === "preferred").length;
 
@@ -66,13 +80,28 @@ export function buildScenarioReportPayload(config: ScenarioConfig, provided?: Si
     deterministic,
     capTable,
     operator,
-    simulation,
     topWarnings,
     executiveSummary: [
       `${config.name} currently models ${preferredSeriesCount} preferred series with ${diagnostics.supportLabel.toLowerCase()} support.`,
-      `Founder median proceeds run ${formatCurrency(simulation.founder.median)} while the modeled investor hits return-the-fund in ${formatPercent(simulation.investor.returnTheFundProbability)} of paths.`,
       `Operator coverage is ${operator.runwayMonths.toFixed(1)} months pre-close and ${operator.postRaiseRunwayMonths.toFixed(1)} months post-close, with net financing proceeds of ${formatCurrency(operator.netFinancingProceeds)}.`,
+      `Current investor ownership is ${formatPercent(deterministic.currentInvestorOwnership)} and the deterministic return-the-fund exit is ${formatCurrency(deterministic.returnTheFundExit)}.`,
       topWarnings[0] ?? "No material interpretation flags were generated for the active scenario.",
+    ],
+  };
+}
+
+export function buildScenarioReportPayload(config: ScenarioConfig, provided?: SimulationSummary): ScenarioReportPayload {
+  const base = buildScenarioBasePayload(config);
+  const simulation = maybeRunSimulation(config, provided);
+
+  return {
+    ...base,
+    simulation,
+    executiveSummary: [
+      base.executiveSummary[0],
+      `Founder median proceeds run ${formatCurrency(simulation.founder.median)} while the modeled investor hits return-the-fund in ${formatPercent(simulation.investor.returnTheFundProbability)} of paths.`,
+      base.executiveSummary[1],
+      base.executiveSummary[2],
     ],
   };
 }

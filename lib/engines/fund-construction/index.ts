@@ -22,6 +22,13 @@ export interface FundConstructionConfig {
   sectorOverlay: SectorOverlay;
 }
 
+export interface FundPresetOption {
+  id: string;
+  name: string;
+  note: string;
+  config: FundConstructionConfig;
+}
+
 export interface FundConstructionSummary {
   managementFees: number;
   investableCapital: number;
@@ -40,6 +47,12 @@ export interface FundConstructionSummary {
   netMultipleThresholds: ThresholdMetric[];
   netMultipleHistogram: HistogramBucket[];
   concentrationMetrics: ThresholdMetric[];
+  timeline: Array<{
+    year: number;
+    dpiMedian: number;
+    tvpiMedian: number;
+    paidInRatioMedian: number;
+  }>;
   warnings: string[];
 }
 
@@ -110,14 +123,14 @@ function toProbability(label: string, count: number, total: number): ThresholdMe
 
 export function getDefaultFundConstructionConfig(): FundConstructionConfig {
   return {
-    fundSize: 60_000_000,
+    fundSize: 100_000_000,
     managementFeeRate: 0.02,
     carryRate: 0.2,
-    reserveRatio: 0.5,
-    initialCheckSize: 1_500_000,
-    followOnCheckSize: 1_000_000,
-    portfolioSize: 18,
-    targetOwnership: 0.12,
+    reserveRatio: 0.35,
+    initialCheckSize: 2_000_000,
+    followOnCheckSize: 2_000_000,
+    portfolioSize: 25,
+    targetOwnership: 0.15,
     followOnStrategy: true,
     followOnThreshold: 4,
     fundLifeYears: 10,
@@ -127,6 +140,61 @@ export function getDefaultFundConstructionConfig(): FundConstructionConfig {
     marketOverlay: "base",
     sectorOverlay: "standard",
   };
+}
+
+export function getFundPresetOptions(): FundPresetOption[] {
+  return [
+    {
+      id: "micro_seed",
+      name: "Micro-fund",
+      note: "A small seed vehicle optimized for many initial shots and lighter reserves.",
+      config: {
+        ...getDefaultFundConstructionConfig(),
+        fundSize: 25_000_000,
+        initialCheckSize: 500_000,
+        followOnCheckSize: 500_000,
+        reserveRatio: 0.2,
+        portfolioSize: 30,
+        targetOwnership: 0.1,
+      },
+    },
+    {
+      id: "standard_seed",
+      name: "Standard seed",
+      note: "Balanced seed construction with enough diversification before reserves crowd out first checks.",
+      config: getDefaultFundConstructionConfig(),
+    },
+    {
+      id: "series_a",
+      name: "Series A",
+      note: "Larger checks, fewer companies, and higher ownership per name.",
+      config: {
+        ...getDefaultFundConstructionConfig(),
+        fundSize: 300_000_000,
+        initialCheckSize: 10_000_000,
+        followOnCheckSize: 8_000_000,
+        reserveRatio: 0.4,
+        portfolioSize: 20,
+        targetOwnership: 0.18,
+        stage: "series_a",
+      },
+    },
+    {
+      id: "growth",
+      name: "Growth",
+      note: "Concentrated later-stage construction that relies on much larger underlying exits.",
+      config: {
+        ...getDefaultFundConstructionConfig(),
+        fundSize: 1_000_000_000,
+        initialCheckSize: 30_000_000,
+        followOnCheckSize: 25_000_000,
+        reserveRatio: 0.5,
+        portfolioSize: 15,
+        targetOwnership: 0.08,
+        stage: "series_c",
+      },
+    },
+  ];
 }
 
 export function summarizeFundConstruction(config: FundConstructionConfig): FundConstructionSummary {
@@ -148,14 +216,22 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
   const topThreeShares: number[] = [];
   const maxCompanyProceeds: number[] = [];
   const netDistributions: number[] = [];
+  const dpiTimelineSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
+  const tvpiTimelineSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
+  const paidInTimelineSamples: number[][] = Array.from({ length: config.fundLifeYears + 1 }, () => []);
 
   const market = marketOverlayMultipliers[config.marketOverlay];
   const sector = sectorOverlayMultipliers[config.sectorOverlay];
+  const annualManagementFee = config.fundSize * config.managementFeeRate;
+  const deploymentYears = Math.max(1, Math.min(3, config.fundLifeYears));
 
   for (let iteration = 0; iteration < config.simulationCount; iteration += 1) {
     const rng = createRng(config.seed + iteration);
     const companyProceeds: number[] = [];
     const exitYears: number[] = [];
+    const initialCallYears: number[] = [];
+    const followOnCallYears: number[] = [];
+    const investedByCompany: number[] = [];
     let remainingReserves = reserveBudget;
 
     for (let company = 0; company < modeledCompanyCount; company += 1) {
@@ -171,15 +247,23 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
         randomBetween(rng, outcome.range[0], outcome.range[1]) * market.exit * sector.exit * randomBetween(rng, 0.88, 1.12);
       const exitYearsForCompany = randomBetween(rng, outcome.exitYears[0], outcome.exitYears[1]);
       let proceeds = config.initialCheckSize * initialMultiple;
+      let investedCapital = config.initialCheckSize;
+      const initialCallYear = Math.min(config.fundLifeYears, 1 + (company % deploymentYears));
+      let followOnCallYear = 0;
 
       if (config.followOnStrategy && initialMultiple >= config.followOnThreshold && remainingReserves >= config.followOnCheckSize) {
         const followOnMultiple = Math.max(1, initialMultiple * randomBetween(rng, 0.28, 0.52));
         proceeds += config.followOnCheckSize * followOnMultiple;
         remainingReserves -= config.followOnCheckSize;
+        investedCapital += config.followOnCheckSize;
+        followOnCallYear = Math.min(config.fundLifeYears, Math.max(2, Math.min(4, Math.round(exitYearsForCompany / 2))));
       }
 
       companyProceeds.push(proceeds);
       exitYears.push(exitYearsForCompany);
+      initialCallYears.push(initialCallYear);
+      followOnCallYears.push(followOnCallYear);
+      investedByCompany.push(investedCapital);
     }
 
     const grossDistribution = companyProceeds.reduce((sum, value) => sum + value, 0);
@@ -201,6 +285,34 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
     topThreeShares.push(topThreeShare);
     maxCompanyProceeds.push(sorted[0] ?? 0);
     netDistributions.push(netDistribution);
+
+    for (let year = 0; year <= config.fundLifeYears; year += 1) {
+      const cumulativeFees = year === 0 ? 0 : Math.min(year, feeYears) * annualManagementFee;
+      const cumulativeInitialCalls = initialCallYears.reduce(
+        (sum, callYear) => sum + (callYear > 0 && callYear <= year ? config.initialCheckSize : 0),
+        0,
+      );
+      const cumulativeFollowOnCalls = followOnCallYears.reduce(
+        (sum, callYear) => sum + (callYear > 0 && callYear <= year ? config.followOnCheckSize : 0),
+        0,
+      );
+      const paidInCapital = cumulativeFees + cumulativeInitialCalls + cumulativeFollowOnCalls;
+      const cumulativeDistributions = companyProceeds.reduce(
+        (sum, proceeds, index) => sum + ((exitYears[index] ?? config.fundLifeYears) <= year ? proceeds : 0),
+        0,
+      );
+      const unrealizedAtCost = investedByCompany.reduce((sum, investedCapital, index) => {
+        const callYear = initialCallYears[index] ?? 1;
+        const exited = (exitYears[index] ?? config.fundLifeYears) <= year;
+        return sum + (callYear <= year && !exited ? investedCapital : 0);
+      }, 0);
+
+      dpiTimelineSamples[year].push(paidInCapital > 0 ? cumulativeDistributions / paidInCapital : 0);
+      tvpiTimelineSamples[year].push(
+        paidInCapital > 0 ? (cumulativeDistributions + unrealizedAtCost) / paidInCapital : 0,
+      );
+      paidInTimelineSamples[year].push(config.fundSize > 0 ? paidInCapital / config.fundSize : 0);
+    }
   }
 
   const warnings = [];
@@ -211,6 +323,16 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
   }
   if (config.followOnStrategy && followOnCapacity === 0) {
     warnings.push("Follow-on strategy is enabled, but the reserve budget cannot fund even one follow-on check.");
+  }
+  if ((config.stage === "pre_seed" || config.stage === "seed") && modeledCompanyCount < 20) {
+    warnings.push(
+      `This ${config.stage.replace("_", " ")} fund only supports ${modeledCompanyCount} initial companies. Early-stage diversification is usually stronger closer to 20-30 names.`,
+    );
+  }
+  if ((config.stage === "pre_seed" || config.stage === "seed") && config.reserveRatio > 0.45) {
+    warnings.push(
+      "Reserve ratio is high for an early-stage fund. Heavy reserves can starve initial deployment and make the fund look more pessimistic than the underlying strategy intends.",
+    );
   }
   if (config.stage === "pre_seed" && config.fundSize > 300_000_000) {
     warnings.push("A very large fund paired with pre-seed checks will struggle to move the fund without extreme concentration.");
@@ -254,6 +376,12 @@ export function summarizeFundConstruction(config: FundConstructionConfig): FundC
       toProbability("One company returns fund", maxCompanyProceeds.filter((value) => value >= config.fundSize).length, maxCompanyProceeds.length),
       toProbability("Top quartile net TVPI", netTvpis.filter((value) => value >= 3).length, netTvpis.length),
     ],
+    timeline: Array.from({ length: config.fundLifeYears + 1 }, (_, year) => ({
+      year,
+      dpiMedian: median(dpiTimelineSamples[year]),
+      tvpiMedian: median(tvpiTimelineSamples[year]),
+      paidInRatioMedian: median(paidInTimelineSamples[year]),
+    })),
     warnings,
   };
 }

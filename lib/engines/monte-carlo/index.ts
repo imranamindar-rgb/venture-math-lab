@@ -12,6 +12,7 @@ import {
   getEmployeeOwnership,
   getFounderOwnership,
   getInvestorOwnership,
+  getNextPreferredSeniority,
 } from "@/lib/engines/cap-table-waterfall";
 import { createRng, clamp, median, percentile, pickWeighted, randomBetween } from "@/lib/sim/rng";
 import { computeWaterfall } from "@/lib/engines/cap-table-waterfall/waterfall";
@@ -26,6 +27,7 @@ import {
   maybeConvertSafe,
 } from "@/lib/engines/cap-table-waterfall/unpriced";
 import {
+  ConfidenceInterval,
   FundingStage,
   HistogramBucket,
   OwnershipPoint,
@@ -38,6 +40,16 @@ import {
 } from "@/lib/sim/types";
 import { getCurrentFinancing } from "@/lib/current-financing";
 
+function sampleCappedPareto(
+  rng: ReturnType<typeof createRng>,
+  minimum: number,
+  alpha: number,
+  maximum: number,
+) {
+  const u = clamp(rng.next(), 1e-9, 1 - 1e-9);
+  return Math.min(maximum, minimum * Math.pow(1 - u, -1 / alpha));
+}
+
 function sampleTerminalExitMultiple(
   rng: ReturnType<typeof createRng>,
   config: ScenarioConfig,
@@ -45,19 +57,31 @@ function sampleTerminalExitMultiple(
 ) {
   const market = marketOverlayMultipliers[config.marketOverlay];
   const sector = sectorOverlayMultipliers[config.sectorOverlay];
+  const baseShutdownProbability = clamp(stagePresets[config.currentStage].failureProbability * 0.35 * market.failure, 0.08, 0.28);
 
-  const bucket = pickWeighted(rng, [
-    { value: { label: "shutdown", range: [0, 0.08] as [number, number] }, weight: 0.33 },
-    { value: { label: "modest acquisition", range: [0.3, 1.5] as [number, number] }, weight: 0.29 },
-    { value: { label: "strong acquisition", range: [1.5, 5.5] as [number, number] }, weight: 0.21 },
-    { value: { label: "ipo-scale", range: [5.5, 16] as [number, number] }, weight: 0.12 },
-    { value: { label: "outlier", range: [16, 110] as [number, number] }, weight: 0.05 },
-  ]);
+  if (rng.next() < baseShutdownProbability) {
+    return {
+      category: "shutdown",
+      exitValue: currentPostMoney * randomBetween(rng, 0, 0.08),
+    };
+  }
 
-  const multiple = randomBetween(rng, bucket.range[0], bucket.range[1]) * market.exit * sector.exit;
+  const tailMultiple =
+    sampleCappedPareto(rng, 0.35, config.controls.paretoAlpha, 1_000) *
+    market.exit *
+    sector.exit;
+  const category =
+    tailMultiple < 1
+      ? "modest acquisition"
+      : tailMultiple < 5
+        ? "strong acquisition"
+        : tailMultiple < 25
+          ? "ipo-scale"
+          : "outlier";
+
   return {
-    category: bucket.label,
-    exitValue: currentPostMoney * multiple,
+    category,
+    exitValue: currentPostMoney * tailMultiple,
   };
 }
 
@@ -186,19 +210,20 @@ function simulatePath(config: ScenarioConfig, iteration: number): PathOutcome {
     }
 
     const nextRound = sampleNextRound(rng, nextStage, currentPostMoney, config, stepPenalty);
+    const conversionSeniority = getNextPreferredSeniority(snapshot);
     const optionPoolRefreshed = maybeRefreshPool(snapshot, config);
 
     if (!noteConverted && config.note.enabled) {
-      const noteResult = maybeConvertNote(snapshot, config, nextRound.preMoney, monthsElapsed);
+      const noteResult = maybeConvertNote(snapshot, config, nextRound.preMoney, monthsElapsed, conversionSeniority);
       noteConverted = noteResult.converted;
     }
 
     if (!safeConverted && config.safe.enabled) {
-      const safeResult = maybeConvertSafe(snapshot, config);
+      const safeResult = maybeConvertSafe(snapshot, config, nextRound.preMoney, true, conversionSeniority);
       safeConverted = safeResult.converted;
     }
 
-    const issued = issuePreferredRound(snapshot, nextRound.preMoney, nextRound.roundSize, config, stagePreset.label);
+    const issued = issuePreferredRound(snapshot, nextRound.preMoney, nextRound.roundSize, config, stagePreset.label, conversionSeniority);
     reserveUsed += issued.followOnCash;
 
     if (
@@ -296,6 +321,38 @@ function toProbability(label: string, count: number, total: number): ThresholdMe
   };
 }
 
+function buildBatches<T>(values: T[], batchCount: number) {
+  const batches = Array.from({ length: batchCount }, () => [] as T[]);
+  values.forEach((value, index) => {
+    batches[index % batchCount].push(value);
+  });
+  return batches.filter((batch) => batch.length > 0);
+}
+
+function sampleStandardDeviation(values: number[]) {
+  if (values.length <= 1) {
+    return 0;
+  }
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance = values.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / (values.length - 1);
+  return Math.sqrt(variance);
+}
+
+function estimateConfidence<T>(values: T[], estimator: (batch: T[]) => number): ConfidenceInterval {
+  const batchCount = Math.max(5, Math.min(20, Math.floor(values.length / 500) || 1));
+  const estimates = buildBatches(values, batchCount).map((batch) => estimator(batch));
+  const standardDeviation = sampleStandardDeviation(estimates);
+  const standardError = estimates.length > 0 ? standardDeviation / Math.sqrt(estimates.length) : 0;
+  const center = estimates.length > 0 ? estimates.reduce((sum, value) => sum + value, 0) / estimates.length : 0;
+  const margin = 1.96 * standardError;
+
+  return {
+    lower: center - margin,
+    upper: center + margin,
+    standardError,
+  };
+}
+
 function buildSummary(config: ScenarioConfig, paths: PathOutcome[]): SimulationSummary {
   const financing = getCurrentFinancing(config);
   const founderValues = paths.map((path) => path.liquidity.founderNetProceeds);
@@ -347,6 +404,21 @@ function buildSummary(config: ScenarioConfig, paths: PathOutcome[]): SimulationS
     toProbability("Liquidity timing risk", paths.filter((path) => path.liquidity.monthsElapsed > 60).length, paths.length),
     toProbability("Upside concentration", paths.filter((path) => path.liquidity.investorMoic >= 10).length, paths.length),
   ];
+
+  const confidence = {
+    founderMedian: estimateConfidence(founderValues, (batch) => percentile(batch, 0.5)),
+    employeeMedian: estimateConfidence(employeeValues, (batch) => percentile(batch, 0.5)),
+    investorMedian: estimateConfidence(investorValues, (batch) => percentile(batch, 0.5)),
+    founderBelow20Probability: estimateConfidence(paths, (batch) =>
+      batch.filter((path) => path.founderThresholds.below20).length / Math.max(1, batch.length),
+    ),
+    employeeUnderwaterProbability: estimateConfidence(paths, (batch) =>
+      batch.filter((path) => path.employeeUnderwater).length / Math.max(1, batch.length),
+    ),
+    investorReturnTheFundProbability: estimateConfidence(paths, (batch) =>
+      batch.filter((path) => path.liquidity.investorProceeds >= config.investor.fundSize).length / Math.max(1, batch.length),
+    ),
+  };
 
   return {
     scenarioId: config.id,
@@ -400,11 +472,13 @@ function buildSummary(config: ScenarioConfig, paths: PathOutcome[]): SimulationS
       { label: "10x-25x", min: 10, max: 25 },
       { label: "25x+", min: 25, max: Number.POSITIVE_INFINITY },
     ]),
+    confidence,
     warnings: [
       ...financing.warnings,
       ...config.warningFlags,
       "Monte Carlo now tracks preferred series by seniority, but it still does not model bespoke warrants, pay-to-play, or charter-specific carve-outs.",
       "Unused option pool shares dilute holders in financing math but do not receive exit proceeds.",
+      "Confidence intervals use repeated batch estimates of the Monte Carlo paths. They are simulation-stability bounds, not market forecast bounds.",
     ],
     pathsSample: paths.slice(0, 24),
   };
@@ -416,6 +490,7 @@ export function sanitizeScenario(config: ScenarioConfig): ScenarioConfig {
   safeConfig.controls = {
     iterations: clamp(Math.round(config.controls.iterations), 500, 20_000),
     seed: Math.max(1, Math.round(config.controls.seed)),
+    paretoAlpha: clamp(config.controls.paretoAlpha ?? 1.55, 1.1, 2.5),
   };
   safeConfig.optionPoolTargetPercent = clamp(config.optionPoolTargetPercent, 0.05, 0.25);
   safeConfig.employee.vestedFraction = clamp(config.employee.vestedFraction, 0.1, 1);

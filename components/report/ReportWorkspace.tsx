@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import Link from "next/link";
 
 import { useScenarioStore } from "@/lib/state/scenario-store";
 import { useSimulationRunner } from "@/components/simulator/useSimulationRunner";
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { SupportBadge } from "@/components/ui/SupportBadge";
 import { buildScenarioCsv, buildScenarioMarkdown } from "@/lib/export";
 import { formatCurrency, formatMultiple, formatPercent } from "@/lib/format";
-import { buildScenarioReportPayload } from "@/lib/reporting";
+import { buildScenarioBasePayload, buildScenarioReportPayload } from "@/lib/reporting";
 
 function downloadCsv(filename: string, payload: string) {
   const blob = new Blob([payload], { type: "text/csv;charset=utf-8" });
@@ -33,30 +34,57 @@ function downloadText(filename: string, payload: string, type = "text/plain;char
 
 export function ReportWorkspace() {
   const active = useScenarioStore((state) => state.active);
+  const hasHydrated = useScenarioStore((state) => state.hasHydrated);
   const { run, summary, loading } = useSimulationRunner();
 
   useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
     run(active);
-  }, [active, run]);
+  }, [active, hasHydrated, run]);
 
+  const basePayload = useMemo(() => (hasHydrated ? buildScenarioBasePayload(active) : null), [active, hasHydrated]);
   const payload = useMemo(() => (summary ? buildScenarioReportPayload(active, summary) : null), [active, summary]);
 
-  if (!payload) {
+  if (!hasHydrated) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Card>
           <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Scenario report</p>
           <h1 className="mt-2 font-heading text-4xl font-semibold">Board-ready venture math summary</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-            Running the active scenario through the deterministic, simulation, cap-table, and operator engines.
+            Loading the saved scenario state before the report runs.
           </p>
-          <p className="mt-4 text-sm text-slate-500">{loading ? "Building report..." : "Preparing report..."}</p>
+          <p className="mt-4 text-sm text-slate-500">Loading saved scenario...</p>
         </Card>
       </div>
     );
   }
 
-  const { diagnostics, deterministic, capTable, operator, simulation, topWarnings } = payload;
+  if (!basePayload) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <Card>
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Scenario report</p>
+          <h1 className="mt-2 font-heading text-4xl font-semibold">Board-ready venture math summary</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">No active scenario is loaded yet.</p>
+          <div className="mt-5">
+            <Link
+              href="/calculator"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white"
+            >
+              Open calculator
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  const { diagnostics, deterministic, capTable, operator, topWarnings } = basePayload;
+  const simulation = payload?.simulation;
+  const executiveSummary = payload?.executiveSummary ?? basePayload.executiveSummary;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 print:max-w-none print:px-0">
@@ -100,13 +128,13 @@ export function ReportWorkspace() {
             <div className="rounded-2xl bg-slate-50 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Founder median</p>
               <p className="mt-2 font-heading text-2xl font-semibold">
-                {summary ? formatCurrency(simulation.founder.median) : "Running"}
+                {simulation ? formatCurrency(simulation.founder.median) : "Running"}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Investor return-the-fund</p>
               <p className="mt-2 font-heading text-2xl font-semibold">
-                {summary ? formatPercent(simulation.investor.returnTheFundProbability) : "Running"}
+                {simulation ? formatPercent(simulation.investor.returnTheFundProbability) : "Running"}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 px-4 py-4">
@@ -120,7 +148,7 @@ export function ReportWorkspace() {
           <Card className="print:shadow-none">
             <h3 className="font-heading text-xl font-semibold">Executive summary</h3>
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
-              {payload.executiveSummary.map((line) => (
+              {executiveSummary.map((line) => (
                 <div key={line} className="rounded-2xl bg-slate-50 px-4 py-3">
                   {line}
                 </div>
@@ -133,11 +161,13 @@ export function ReportWorkspace() {
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl bg-slate-50 px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Run ID</p>
-                <p className="mt-2 font-semibold text-slate-900">{payload.runId}</p>
+                <p className="mt-2 font-semibold text-slate-900">{payload?.runId ?? basePayload.runId}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Methodology version</p>
-                <p className="mt-2 font-semibold text-slate-900">{payload.methodologyVersion}</p>
+                <p className="mt-2 font-semibold text-slate-900">
+                  {payload?.methodologyVersion ?? basePayload.methodologyVersion}
+                </p>
               </div>
               {diagnostics.assumptions.map((assumption) => (
                 <div key={assumption.label} className="rounded-2xl bg-slate-50 px-4 py-3">
@@ -193,27 +223,45 @@ export function ReportWorkspace() {
               <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
                 <dt>Founder below 20%</dt>
                 <dd className="font-semibold">
-                  {summary ? formatPercent(simulation.founder.ownershipThresholds[1]?.probability ?? 0) : "Running"}
+                  {simulation ? formatPercent(simulation.founder.ownershipThresholds[1]?.probability ?? 0) : "Running"}
                 </dd>
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
                 <dt>Employee underwater</dt>
                 <dd className="font-semibold">
-                  {summary ? formatPercent(simulation.employee.underwaterProbability) : "Running"}
+                  {simulation ? formatPercent(simulation.employee.underwaterProbability) : "Running"}
                 </dd>
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
                 <dt>Investor 10x+</dt>
                 <dd className="font-semibold">
-                  {summary ? formatPercent(simulation.investor.moicThresholds[2]?.probability ?? 0) : "Running"}
+                  {simulation ? formatPercent(simulation.investor.moicThresholds[2]?.probability ?? 0) : "Running"}
                 </dd>
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
                 <dt>Power-law spread</dt>
-                <dd className="font-semibold">{summary ? formatMultiple(simulation.meanVsMedianSpread) : "Running"}</dd>
+                <dd className="font-semibold">{simulation ? formatMultiple(simulation.meanVsMedianSpread) : "Running"}</dd>
               </div>
             </dl>
-            {loading ? <p className="mt-3 text-sm text-slate-500">Running simulation...</p> : null}
+            <p className="mt-3 text-sm text-slate-500">
+              {simulation
+                ? `Monte Carlo seed ${simulation.seed} across ${simulation.iterations.toLocaleString("en-US")} paths.`
+                : loading
+                  ? "Running Monte Carlo section..."
+                  : "Monte Carlo section waiting for the active scenario to run."}
+            </p>
+            {simulation ? (
+              <div className="mt-4 space-y-2 text-sm text-slate-600">
+                <p>
+                  Founder median 95% CI {formatCurrency(simulation.confidence.founderMedian.lower)} to{" "}
+                  {formatCurrency(simulation.confidence.founderMedian.upper)}.
+                </p>
+                <p>
+                  Investor return-the-fund 95% CI {formatPercent(simulation.confidence.investorReturnTheFundProbability.lower)} to{" "}
+                  {formatPercent(simulation.confidence.investorReturnTheFundProbability.upper)}.
+                </p>
+              </div>
+            ) : null}
           </Card>
 
           <Card className="print:shadow-none">

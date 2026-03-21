@@ -73,6 +73,7 @@ export function FundamentalsDashboardWorkspace() {
   const [fundSize, setFundSize] = useState(60_000_000);
   const [yearsToExit, setYearsToExit] = useState(6);
   const [learnMode, setLearnMode] = useState(true);
+  const [showControls, setShowControls] = useState(false);
 
   const preset = stagePresets[stage];
   const postMoney = calculatePostMoney(preset.preMoney, checkSize);
@@ -97,9 +98,72 @@ export function FundamentalsDashboardWorkspace() {
         </Button>
       </div>
 
-      <div className="mt-8 grid gap-6 2xl:grid-cols-[0.95fr,1.35fr]">
+      <div className="mt-8 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+        <MetricCard
+          label="Benchmark pre-money"
+          value={formatCurrency(preset.preMoney)}
+          caption={`${preset.label} market median`}
+        />
+        <MetricCard
+          label="Post-money"
+          value={formatCurrency(postMoney)}
+          caption="Pre-money plus check size"
+        />
+        <MetricCard
+          label="Immediate ownership"
+          value={formatPercent(ownership)}
+          caption="Priced-round ownership before later dilution"
+        />
+        <MetricCard
+          label="3x IRR example"
+          value={formatPercent(impliedIrr)}
+          caption={`Annualized IRR if 3x happens in ${yearsToExit} years`}
+        />
+      </div>
+
+      <div className="mt-8 grid gap-4 xl:grid-cols-[1.2fr,0.8fr]">
+        <OwnershipChart data={ownershipSeries} />
         <Card>
-          <h2 className="font-heading text-xl font-semibold">Live teaching controls</h2>
+          <h2 className="font-heading text-xl font-semibold">Threshold takeaways</h2>
+          <dl className="mt-4 space-y-3 text-sm text-slate-700">
+            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
+              <dt>3x exit requirement</dt>
+              <dd className="font-semibold">{formatCurrency(threeXExit)}</dd>
+            </div>
+            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
+              <dt>One company returns fund</dt>
+              <dd className="font-semibold">{formatCurrency(returnTheFundExit)}</dd>
+            </div>
+            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
+              <dt>Median next round size</dt>
+              <dd className="font-semibold">{formatCurrency(preset.roundSize)}</dd>
+            </div>
+            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
+              <dt>Founder base ownership</dt>
+              <dd className="font-semibold">{formatPercent(preset.founderBasePercent)}</dd>
+            </div>
+          </dl>
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+            The dashboard should give you the threshold answer first. Open the teaching controls only when you want to change the example and watch the answer move.
+          </div>
+          <div className="mt-4">
+            <Button variant={showControls ? "secondary" : "primary"} onClick={() => setShowControls((current) => !current)}>
+              {showControls ? "Hide teaching controls" : "Adjust teaching example"}
+            </Button>
+          </div>
+          {learnMode ? (
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              The ownership chart is intentionally stage-based. Venture math is path dependent, so the lesson is not just
+              “who owns what now,” but how each financing step shifts who can actually participate in the eventual exit.
+            </p>
+          ) : null}
+        </Card>
+      </div>
+
+      {showControls ? (
+        <div className="mt-8">
+          <Card>
+            <h2 className="font-heading text-xl font-semibold">Live teaching controls</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
             <label className="space-y-2 text-sm">
               <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
@@ -179,61 +243,8 @@ export function FundamentalsDashboardWorkspace() {
             </div>
           ) : null}
         </Card>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label="Benchmark pre-money"
-            value={formatCurrency(preset.preMoney)}
-            caption={`${preset.label} market median`}
-          />
-          <MetricCard
-            label="Post-money"
-            value={formatCurrency(postMoney)}
-            caption="Pre-money plus check size"
-          />
-          <MetricCard
-            label="Immediate ownership"
-            value={formatPercent(ownership)}
-            caption="Priced-round ownership before later dilution"
-          />
-          <MetricCard
-            label="3x IRR example"
-            value={formatPercent(impliedIrr)}
-            caption={`Annualized IRR if 3x happens in ${yearsToExit} years`}
-          />
         </div>
-      </div>
-
-      <div className="mt-8 grid gap-4 xl:grid-cols-[1.2fr,0.8fr]">
-        <OwnershipChart data={ownershipSeries} />
-        <Card>
-          <h2 className="font-heading text-xl font-semibold">Threshold takeaways</h2>
-          <dl className="mt-4 space-y-3 text-sm text-slate-700">
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
-              <dt>3x exit requirement</dt>
-              <dd className="font-semibold">{formatCurrency(threeXExit)}</dd>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
-              <dt>One company returns fund</dt>
-              <dd className="font-semibold">{formatCurrency(returnTheFundExit)}</dd>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
-              <dt>Median next round size</dt>
-              <dd className="font-semibold">{formatCurrency(preset.roundSize)}</dd>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
-              <dt>Founder base ownership</dt>
-              <dd className="font-semibold">{formatPercent(preset.founderBasePercent)}</dd>
-            </div>
-          </dl>
-          {learnMode ? (
-            <p className="mt-4 text-sm leading-6 text-slate-600">
-              The ownership chart is intentionally stage-based. Venture math is path dependent, so the lesson is not just
-              “who owns what now,” but how each financing step shifts who can actually participate in the eventual exit.
-            </p>
-          ) : null}
-        </Card>
-      </div>
+      ) : null}
 
       <div className="mt-8 grid gap-4 xl:grid-cols-2">
         <HistogramChart title="Illustrative Venture Return Buckets" data={powerLawBuckets} />

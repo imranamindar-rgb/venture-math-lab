@@ -17,12 +17,13 @@ describe("reporting and diagnostics", () => {
     expect(diagnostics.issues.some((issue) => issue.level === "unsupported")).toBe(true);
   });
 
-  it("marks unpriced rounds as approximate when ownership is still estimated", () => {
-    const scenario = getScenarioPreset("stress_case");
+  it("marks SAFE preview ownership with standard support and an explicit conversion note", () => {
+    const scenario = getScenarioPreset("nvca_standard");
+    scenario.secondary.enabled = false;
     const diagnostics = analyzeScenario(scenario);
 
-    expect(diagnostics.supportLevel).toBe("approximate");
-    expect(diagnostics.issues.some((issue) => issue.title.includes("forward-estimated"))).toBe(true);
+    expect(diagnostics.supportLevel).toBe("standard");
+    expect(diagnostics.issues.some((issue) => issue.title.includes("SAFE preview"))).toBe(true);
   });
 
   it("exports a CSV summary with scenario, deterministic, simulation, and waterfall sections", () => {

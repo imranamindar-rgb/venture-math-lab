@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-20T19:33:56.580Z",
+  "generatedAt": "2026-03-21T09:43:26.514Z",
   "benchmarks": [
     {
       "id": "seed_priced_round",
@@ -52,10 +52,10 @@
         "Target pool = 15%"
       ],
       "expected": {
-        "addedShares": 752688.1720430107
+        "addedShares": 752688.1720435295
       },
       "actual": {
-        "addedShares": 752688.1720430107
+        "addedShares": 752688.172044
       },
       "classification": "exact match"
     },
@@ -157,12 +157,12 @@
         "Seed = 42"
       ],
       "expected": {
-        "founderMedian": 14922042.031129258,
-        "returnTheFundProbability": 0.2479
+        "founderMedian": 19909291.025,
+        "returnTheFundProbability": 0.1161
       },
       "actual": {
-        "founderMedian": 14922042.031129258,
-        "returnTheFundProbability": 0.2479
+        "founderMedian": 19909291.025,
+        "returnTheFundProbability": 0.1161
       },
       "classification": "exact match"
     },

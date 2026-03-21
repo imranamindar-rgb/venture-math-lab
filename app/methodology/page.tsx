@@ -1,6 +1,6 @@
 import { PageShell } from "@/components/layout/PageShell";
 import { Card } from "@/components/ui/Card";
-import { glossary, methodologySections } from "@/data/methodology";
+import { glossary, methodologyLimitations, methodologySections, methodologySources } from "@/data/methodology";
 
 export default function MethodologyPage() {
   return (
@@ -17,6 +17,16 @@ export default function MethodologyPage() {
         </div>
 
         <div className="mt-10 space-y-5">
+          <Card>
+            <h2 className="font-heading text-2xl font-semibold">Limitations first</h2>
+            <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
+              {methodologyLimitations.map((item) => (
+                <li key={item} className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </Card>
           <Card>
             <h2 className="font-heading text-2xl font-semibold">Support tags</h2>
             <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
@@ -38,6 +48,31 @@ export default function MethodologyPage() {
               </div>
             </Card>
           ))}
+          <Card>
+            <h2 className="font-heading text-2xl font-semibold">Calibration references</h2>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full border-separate border-spacing-y-2 text-sm text-slate-700">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-500">
+                    <th className="px-3 py-2">Source</th>
+                    <th className="px-3 py-2">Metric used</th>
+                    <th className="px-3 py-2">Period</th>
+                    <th className="px-3 py-2">Role</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {methodologySources.map((source) => (
+                    <tr key={source.name} className="rounded-panel bg-slate-50">
+                      <td className="rounded-l-2xl px-3 py-3 font-semibold text-slate-900">{source.name}</td>
+                      <td className="px-3 py-3">{source.metric}</td>
+                      <td className="px-3 py-3">{source.period}</td>
+                      <td className="rounded-r-2xl px-3 py-3">{source.role}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
 
         <div className="mt-10">

@@ -12,6 +12,8 @@ export const antiDilutionModes = ["none", "broad_weighted_average", "full_ratche
 export type AntiDilutionMode = (typeof antiDilutionModes)[number];
 export const preferredOwnerGroups = ["prior", "modeled"] as const;
 export type PreferredOwnerGroup = (typeof preferredOwnerGroups)[number];
+export const preferredSeriesTypes = ["priced", "safe_shadow", "note_shadow"] as const;
+export type PreferredSeriesType = (typeof preferredSeriesTypes)[number];
 
 export const liquidityKinds = ["shutdown", "acquisition", "secondary", "ipo"] as const;
 export type LiquidityEventKind = (typeof liquidityKinds)[number];
@@ -64,6 +66,7 @@ export interface SafeConfig {
   enabled: boolean;
   investment: number;
   postMoneyCap: number;
+  discountRate: number;
 }
 
 export interface ConvertibleNoteConfig {
@@ -98,6 +101,7 @@ export interface PreferredSeriesSnapshot {
   id: string;
   label: string;
   ownerGroup: PreferredOwnerGroup;
+  seriesType: PreferredSeriesType;
   shares: number;
   liquidationPreference: number;
   participationMode: PreferredParticipationMode;
@@ -130,6 +134,7 @@ export interface SecondaryConfig {
 export interface SimulationControls {
   iterations: number;
   seed: number;
+  paretoAlpha: number;
 }
 
 export interface ScenarioConfig {
@@ -203,6 +208,7 @@ export interface WaterfallPayouts {
     id: string;
     label: string;
     ownerGroup: PreferredOwnerGroup;
+    seriesType: PreferredSeriesType;
     seniority: number;
     shares: number;
     liquidationPreference: number;
@@ -268,11 +274,26 @@ export interface ThresholdMetric {
   probability: number;
 }
 
+export interface ConfidenceInterval {
+  lower: number;
+  upper: number;
+  standardError: number;
+}
+
 export interface StakeholderSummary {
   riskBand: RiskBand;
   median: number;
   p10: number;
   p90: number;
+}
+
+export interface SimulationConfidenceSummary {
+  founderMedian: ConfidenceInterval;
+  employeeMedian: ConfidenceInterval;
+  investorMedian: ConfidenceInterval;
+  founderBelow20Probability: ConfidenceInterval;
+  employeeUnderwaterProbability: ConfidenceInterval;
+  investorReturnTheFundProbability: ConfidenceInterval;
 }
 
 export interface SimulationSummary {
@@ -300,6 +321,7 @@ export interface SimulationSummary {
   ownershipSeries: OwnershipPoint[];
   exitHistogram: HistogramBucket[];
   investorHistogram: HistogramBucket[];
+  confidence: SimulationConfidenceSummary;
   warnings: string[];
   pathsSample: PathOutcome[];
 }
@@ -344,6 +366,7 @@ export const scenarioConfigSchema = z.object({
     enabled: z.boolean(),
     investment: z.number().nonnegative(),
     postMoneyCap: z.number().positive(),
+    discountRate: z.number().min(0).max(0.5),
   }),
   note: z.object({
     enabled: z.boolean(),
@@ -412,6 +435,7 @@ export const scenarioConfigSchema = z.object({
   controls: z.object({
     iterations: z.number().int().min(100).max(50000),
     seed: z.number().int().positive(),
+    paretoAlpha: z.number().min(1.1).max(2.5).default(1.55),
   }),
   warningFlags: z.array(z.string()),
 });

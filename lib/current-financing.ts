@@ -1,4 +1,5 @@
 import { ScenarioConfig } from "@/lib/sim/types";
+import { roundCurrency } from "@/lib/precision";
 
 export interface CurrentFinancing {
   totalRoundRaise: number;
@@ -16,12 +17,12 @@ function isMateriallyDifferent(a: number, b: number) {
 
 export function getCurrentFinancing(config: ScenarioConfig): CurrentFinancing {
   const totalRoundRaise = Math.max(0, config.currentRoundSize);
-  const pricedPostMoney = config.currentPreMoney + totalRoundRaise;
+  const pricedPostMoney = roundCurrency(config.currentPreMoney + totalRoundRaise);
   const warnings: string[] = [];
 
   if (config.currentRoundKind === "priced_preferred") {
-    const modeledInvestorCheck = Math.min(Math.max(0, config.investor.initialCheck), totalRoundRaise);
-    const syndicateCheck = Math.max(0, totalRoundRaise - modeledInvestorCheck);
+    const modeledInvestorCheck = roundCurrency(Math.min(Math.max(0, config.investor.initialCheck), totalRoundRaise));
+    const syndicateCheck = roundCurrency(Math.max(0, totalRoundRaise - modeledInvestorCheck));
 
     if (config.investor.initialCheck > totalRoundRaise) {
       warnings.push(
@@ -41,8 +42,8 @@ export function getCurrentFinancing(config: ScenarioConfig): CurrentFinancing {
   }
 
   if (config.currentRoundKind === "safe_post_money") {
-    const modeledInvestorCheck = config.safe.enabled ? Math.max(0, config.safe.investment) : 0;
-    const syndicateCheck = Math.max(0, totalRoundRaise - modeledInvestorCheck);
+    const modeledInvestorCheck = config.safe.enabled ? roundCurrency(Math.max(0, config.safe.investment)) : 0;
+    const syndicateCheck = roundCurrency(Math.max(0, totalRoundRaise - modeledInvestorCheck));
 
     if (!config.safe.enabled) {
       warnings.push("Current round is set to SAFE, but SAFE terms are disabled, so modeled SAFE ownership is zero.");
@@ -71,15 +72,15 @@ export function getCurrentFinancing(config: ScenarioConfig): CurrentFinancing {
       modeledInvestorCheck,
       syndicateCheck,
       pricedPostMoney,
-      referencePostMoney: Math.max(config.safe.postMoneyCap, pricedPostMoney),
+      referencePostMoney: roundCurrency(Math.max(config.safe.postMoneyCap, pricedPostMoney)),
       investorOwnershipEstimate: config.safe.postMoneyCap > 0 ? modeledInvestorCheck / config.safe.postMoneyCap : 0,
       warnings,
     };
   }
 
-  const modeledInvestorCheck = config.note.enabled ? Math.max(0, config.note.principal) : 0;
-  const syndicateCheck = Math.max(0, totalRoundRaise - modeledInvestorCheck);
-  const noteReferencePostMoney = config.note.preMoneyCap + totalRoundRaise;
+  const modeledInvestorCheck = config.note.enabled ? roundCurrency(Math.max(0, config.note.principal)) : 0;
+  const syndicateCheck = roundCurrency(Math.max(0, totalRoundRaise - modeledInvestorCheck));
+  const noteReferencePostMoney = roundCurrency(config.note.preMoneyCap + totalRoundRaise);
 
   if (!config.note.enabled) {
     warnings.push("Current round is set to capped note, but note terms are disabled, so modeled note ownership is zero.");
@@ -108,7 +109,7 @@ export function getCurrentFinancing(config: ScenarioConfig): CurrentFinancing {
     modeledInvestorCheck,
     syndicateCheck,
     pricedPostMoney,
-    referencePostMoney: Math.max(noteReferencePostMoney, pricedPostMoney),
+    referencePostMoney: roundCurrency(Math.max(noteReferencePostMoney, pricedPostMoney)),
     investorOwnershipEstimate: noteReferencePostMoney > 0 ? modeledInvestorCheck / noteReferencePostMoney : 0,
     warnings,
   };

@@ -12,12 +12,14 @@ import {
   getFounderOwnership,
   getInvestorOwnership,
   getPoolOwnership,
+  getFullyDilutedShares,
   issuePreferredRound,
   maybeConvertNote,
   maybeConvertSafe,
   maybeRefreshPool,
   getReferencePostMoney,
   projectMedianRound,
+  getNextPreferredSeniority,
 } from "@/lib/engines/cap-table-waterfall";
 import { computeWaterfall } from "@/lib/engines/cap-table-waterfall/waterfall";
 import {
@@ -63,17 +65,38 @@ export interface DeterministicWaterfallScenario {
   preferredStructure: string;
 }
 
+export interface OptionPoolShuffleIllustration {
+  preMoneyFounderOwnership: number;
+  postMoneyFounderOwnership: number;
+  founderOwnershipDelta: number;
+  founderProceedsDeltaAtIllustrativeExit: number;
+  illustrativeExitValue: number;
+}
+
+export interface DeterministicExitTakeHome {
+  exitValue: number;
+  founderNet: number;
+  founderSecondary: number;
+  employeeNet: number;
+  employeeGross: number;
+  investorProceeds: number;
+  priorInvestorProceeds: number;
+  preferredStructure: string;
+}
+
 export interface DeterministicFinanceSummary {
   currentPostMoney: number;
   currentInvestorOwnership: number;
   benchmarkNextStepUp: number;
   breakEvenExit: number;
   threeXExit: number;
+  founderTenMillionExit: number;
   returnTheFundExit: number;
   formulas: FormulaLine[];
   ownershipSeries: OwnershipPoint[];
   roundProjection: DeterministicRoundProjection[];
   waterfallScenarios: DeterministicWaterfallScenario[];
+  optionPoolShuffle: OptionPoolShuffleIllustration;
   warnings: string[];
 }
 
@@ -86,6 +109,40 @@ function getEmployeeExerciseCost(config: ScenarioConfig, snapshot: CapTableSnaps
   const sharePrice = commonShares > 0 ? exitValue / commonShares : 0;
   const grantShares = 10_000_000 * (config.employee.grantOwnershipPercent / 100);
   return grantShares * config.employee.vestedFraction * Math.max(0, config.employee.strikePrice - sharePrice * 0.15);
+}
+
+function getFounderNetAtExit(config: ScenarioConfig, snapshot: CapTableSnapshot, exitValue: number) {
+  const waterfall = computeWaterfall(
+    snapshot,
+    exitValue,
+    getEmployeeExerciseCost(config, snapshot, exitValue),
+    config.preferred,
+  );
+  return waterfall.founderPayout + snapshot.realizedFounderSecondary;
+}
+
+function findExitForFounderTarget(config: ScenarioConfig, snapshot: CapTableSnapshot, targetProceeds: number, fallbackExit: number) {
+  let low = 0;
+  let high = Math.max(fallbackExit, targetProceeds * 40, 25_000_000);
+
+  while (getFounderNetAtExit(config, snapshot, high) < targetProceeds) {
+    high *= 2;
+    if (high > 100_000_000_000) {
+      break;
+    }
+  }
+
+  for (let iteration = 0; iteration < 50; iteration += 1) {
+    const mid = (low + high) / 2;
+    const founderProceeds = getFounderNetAtExit(config, snapshot, mid);
+    if (founderProceeds >= targetProceeds) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
+
+  return high;
 }
 
 function projectDeterministicPath(config: ScenarioConfig) {
@@ -104,18 +161,19 @@ function projectDeterministicPath(config: ScenarioConfig) {
     const preset = stagePresets[nextStage];
     monthsElapsed += preset.monthsToNext;
     const nextRound = projectMedianRound(nextStage, currentPostMoney, config);
+    const conversionSeniority = getNextPreferredSeniority(snapshot);
 
     const optionPoolRefreshed = maybeRefreshPool(snapshot, config);
 
     if (!noteConverted && config.note.enabled) {
-      noteConverted = maybeConvertNote(snapshot, config, nextRound.preMoney, monthsElapsed).converted;
+      noteConverted = maybeConvertNote(snapshot, config, nextRound.preMoney, monthsElapsed, conversionSeniority).converted;
     }
 
     if (!safeConverted && config.safe.enabled) {
-      safeConverted = maybeConvertSafe(snapshot, config).converted;
+      safeConverted = maybeConvertSafe(snapshot, config, nextRound.preMoney, true, conversionSeniority).converted;
     }
 
-    const issued = issuePreferredRound(snapshot, nextRound.preMoney, nextRound.roundSize, config, preset.label);
+    const issued = issuePreferredRound(snapshot, nextRound.preMoney, nextRound.roundSize, config, preset.label, conversionSeniority);
     const shouldApplySecondary =
       config.secondary.enabled && (nextStage === "series_b" || nextStage === "series_c");
 
@@ -157,6 +215,68 @@ function projectDeterministicPath(config: ScenarioConfig) {
     ownershipSeries,
     roundProjection,
     terminalPostMoney: currentPostMoney,
+  };
+}
+
+function buildOptionPoolShuffleIllustration(config: ScenarioConfig): OptionPoolShuffleIllustration {
+  const snapshotPreMoney = createInitialCapTable(config);
+  const snapshotPostMoney = createInitialCapTable(config);
+  const roundPreMoney = config.currentPreMoney;
+  const roundSize = config.currentRoundSize;
+  const seniority = 3;
+  let low = 0;
+  let high = getFullyDilutedShares(snapshotPreMoney) * config.optionPoolTargetPercent * 2;
+
+  for (let iteration = 0; iteration < 40; iteration += 1) {
+    const mid = (low + high) / 2;
+    const trialSnapshot = structuredClone(snapshotPreMoney);
+    trialSnapshot.employeePool += mid;
+    issuePreferredRound(trialSnapshot, roundPreMoney, roundSize, config, "Pool shuffle illustration", seniority);
+
+    if (getPoolOwnership(trialSnapshot) >= config.optionPoolTargetPercent) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
+
+  snapshotPreMoney.employeePool += high;
+  issuePreferredRound(snapshotPreMoney, roundPreMoney, roundSize, config, "Pool shuffle illustration", seniority);
+
+  issuePreferredRound(snapshotPostMoney, roundPreMoney, roundSize, config, "Pool shuffle illustration", seniority);
+  maybeRefreshPool(snapshotPostMoney, config);
+
+  const illustrativeExitValue = Math.max(roundPreMoney + roundSize, 1) * 3;
+  const founderAtPreMoneyPool = getFounderNetAtExit(config, snapshotPreMoney, illustrativeExitValue);
+  const founderAtPostMoneyPool = getFounderNetAtExit(config, snapshotPostMoney, illustrativeExitValue);
+
+  return {
+    preMoneyFounderOwnership: getFounderOwnership(snapshotPreMoney),
+    postMoneyFounderOwnership: getFounderOwnership(snapshotPostMoney),
+    founderOwnershipDelta: getFounderOwnership(snapshotPostMoney) - getFounderOwnership(snapshotPreMoney),
+    founderProceedsDeltaAtIllustrativeExit: founderAtPostMoneyPool - founderAtPreMoneyPool,
+    illustrativeExitValue,
+  };
+}
+
+export function evaluateDeterministicExitScenario(config: ScenarioConfig, exitValue: number): DeterministicExitTakeHome {
+  const path = projectDeterministicPath(config);
+  const waterfall = computeWaterfall(
+    path.snapshot,
+    exitValue,
+    getEmployeeExerciseCost(config, path.snapshot, exitValue),
+    config.preferred,
+  );
+
+  return {
+    exitValue,
+    founderNet: waterfall.founderPayout + path.snapshot.realizedFounderSecondary,
+    founderSecondary: path.snapshot.realizedFounderSecondary,
+    employeeNet: waterfall.employeeNetPayout + path.snapshot.realizedEmployeeSecondary,
+    employeeGross: waterfall.employeeGrossPayout,
+    investorProceeds: waterfall.investorPayout,
+    priorInvestorProceeds: waterfall.priorInvestorPayout,
+    preferredStructure: waterfall.preferredStructure,
   };
 }
 
@@ -202,11 +322,18 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
     path.roundProjection.at(-1)?.investorOwnership ?? currentInvestorOwnership;
   const breakEvenExit = calculateRequiredExitValue(path.snapshot.modeledInvestorInvested, terminalInvestorOwnership);
   const threeXExit = calculateRequiredExitValue(path.snapshot.modeledInvestorInvested * 3, terminalInvestorOwnership);
+  const founderTenMillionExit = findExitForFounderTarget(
+    config,
+    path.snapshot,
+    10_000_000,
+    Math.max(breakEvenExit, path.terminalPostMoney * 1.5),
+  );
   const returnTheFundExit = calculateRequiredExitValue(config.investor.fundSize, terminalInvestorOwnership);
 
   const waterfallScenarios = [
     { label: "Break-even", exitValue: breakEvenExit },
     { label: "3x case", exitValue: Math.max(threeXExit, path.terminalPostMoney * 1.5) },
+    { label: "Founder makes $10M", exitValue: founderTenMillionExit },
     { label: "Return the fund", exitValue: Math.max(returnTheFundExit, path.terminalPostMoney * 5) },
   ].map((scenario) => {
     const waterfall = computeWaterfall(
@@ -262,6 +389,13 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
       format: "currency",
     },
     {
+      label: "Founder makes $10M personally",
+      formula: "solve founder_net_proceeds(exit) = $10,000,000",
+      value: founderTenMillionExit,
+      note: "This is solved against the modeled waterfall, not just simple ownership, so preference overhang still matters.",
+      format: "currency",
+    },
+    {
       label: "Return-the-fund threshold",
       formula: "return_the_fund_exit = fund_size / ownership_at_exit",
       value: returnTheFundExit,
@@ -278,6 +412,7 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
     (path.roundProjection.at(-1)?.founderOwnership ?? getFounderOwnership(path.snapshot)) < 0.2
       ? "Founders drift below 20% on the deterministic path before the terminal stage."
       : "Founder ownership stays above 20% on the deterministic path.",
+    "Option-pool shuffle math below compares the founder hit when the same pool top-up is forced pre-money versus after the round.",
   ];
 
   return {
@@ -286,11 +421,13 @@ export function summarizeDeterministicFinance(config: ScenarioConfig): Determini
     benchmarkNextStepUp,
     breakEvenExit,
     threeXExit,
+    founderTenMillionExit,
     returnTheFundExit,
     formulas,
     ownershipSeries: path.ownershipSeries,
     roundProjection: path.roundProjection,
     waterfallScenarios,
+    optionPoolShuffle: buildOptionPoolShuffleIllustration(config),
     warnings,
   };
 }

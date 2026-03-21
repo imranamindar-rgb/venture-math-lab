@@ -15,6 +15,9 @@ export interface SavedScenario {
 }
 
 interface ScenarioStore {
+  hasHydrated: boolean;
+  setHasHydrated: (value: boolean) => void;
+  lastModifiedAt: string;
   active: ScenarioConfig;
   comparison: ScenarioConfig;
   saved: SavedScenario[];
@@ -25,6 +28,8 @@ interface ScenarioStore {
   updateNested: <K extends keyof ScenarioConfig>(target: "active" | "comparison", key: K, patch: Partial<ScenarioConfig[K]>) => void;
   saveScenario: (target: "active" | "comparison", name?: string) => void;
   loadSaved: (savedId: string, target: "active" | "comparison") => void;
+  renameSaved: (savedId: string, name: string) => void;
+  deleteSaved: (savedId: string) => void;
   exportScenarioFile: (target: "active" | "comparison") => ScenarioFileV1;
   importScenarioFile: (raw: unknown, target: "active" | "comparison") => { ok: true } | { ok: false; error: string };
 }
@@ -35,6 +40,10 @@ const defaultComparison = getScenarioPreset("stress_case");
 function withControls(config: ScenarioConfig): ScenarioConfig {
   return withNormalizedFounders({
     ...config,
+    safe: {
+      ...config.safe,
+      discountRate: config.safe.discountRate ?? 0,
+    },
     preferred: config.preferred ?? {
       participationMode: "non_participating",
       liquidationMultiple: 1,
@@ -53,11 +62,16 @@ function withControls(config: ScenarioConfig): ScenarioConfig {
       capexMonthly: 15_000,
       transactionFees: 150_000,
     },
-    controls: config.controls ?? {
-      iterations: 10_000,
-      seed: 42,
+    controls: {
+      iterations: config.controls?.iterations ?? 10_000,
+      seed: config.controls?.seed ?? 42,
+      paretoAlpha: config.controls?.paretoAlpha ?? 1.55,
     },
   });
+}
+
+function markModified() {
+  return new Date().toISOString();
 }
 
 export const useScenarioStore = create<ScenarioStore>()(
@@ -65,15 +79,20 @@ export const useScenarioStore = create<ScenarioStore>()(
     (set, get) => ({
       active: withControls(defaultActive),
       comparison: withControls(defaultComparison),
+      hasHydrated: false,
+      lastModifiedAt: markModified(),
+      setHasHydrated: (value) => set({ hasHydrated: value }),
       saved: [],
-      setActivePreset: (id) => set({ active: withControls(getScenarioPreset(id)) }),
-      setComparisonPreset: (id) => set({ comparison: withControls(getScenarioPreset(id)) }),
+      setActivePreset: (id) => set({ active: withControls(getScenarioPreset(id)), lastModifiedAt: markModified() }),
+      setComparisonPreset: (id) =>
+        set({ comparison: withControls(getScenarioPreset(id)), lastModifiedAt: markModified() }),
       updateActive: (patch) =>
         set((state) => ({
           active: withControls({
             ...state.active,
             ...patch,
           }),
+          lastModifiedAt: markModified(),
         })),
       updateComparison: (patch) =>
         set((state) => ({
@@ -81,6 +100,7 @@ export const useScenarioStore = create<ScenarioStore>()(
             ...state.comparison,
             ...patch,
           }),
+          lastModifiedAt: markModified(),
         })),
       updateNested: (target, key, patch) =>
         set((state) => {
@@ -91,9 +111,10 @@ export const useScenarioStore = create<ScenarioStore>()(
               ...(patch as object),
             },
           } as ScenarioConfig;
-          return {
-            [target]: withControls(next),
-          } as Pick<ScenarioStore, "active" | "comparison">;
+          const updated = withControls(next);
+          return target === "active"
+            ? { active: updated, lastModifiedAt: markModified() }
+            : { comparison: updated, lastModifiedAt: markModified() };
         }),
       saveScenario: (target, name) =>
         set((state) => {
@@ -115,10 +136,19 @@ export const useScenarioStore = create<ScenarioStore>()(
             return state;
           }
 
-          return {
-            [target]: withControls(structuredClone(saved.config)),
-          } as Pick<ScenarioStore, "active" | "comparison">;
+          const updated = withControls(structuredClone(saved.config));
+          return target === "active"
+            ? { active: updated, lastModifiedAt: markModified() }
+            : { comparison: updated, lastModifiedAt: markModified() };
         }),
+      renameSaved: (savedId, name) =>
+        set((state) => ({
+          saved: state.saved.map((entry) => (entry.id === savedId ? { ...entry, name: name.trim() || entry.name } : entry)),
+        })),
+      deleteSaved: (savedId) =>
+        set((state) => ({
+          saved: state.saved.filter((entry) => entry.id !== savedId),
+        })),
       exportScenarioFile: (target) => ({
         schemaVersion: 1,
         createdAt: new Date().toISOString(),
@@ -131,18 +161,25 @@ export const useScenarioStore = create<ScenarioStore>()(
           return { ok: false as const, error: "The scenario file does not match the Venture Math Lab v1 schema." };
         }
 
-        set({
-          [target]: withControls(parsed.data.config),
-        } as Pick<ScenarioStore, "active" | "comparison">);
+        const updated = withControls(parsed.data.config);
+        set(
+          target === "active"
+            ? { active: updated, lastModifiedAt: markModified() }
+            : { comparison: updated, lastModifiedAt: markModified() },
+        );
         return { ok: true as const };
       },
     }),
     {
       name: "venture-math-lab-store",
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
       partialize: (state) => ({
         active: state.active,
         comparison: state.comparison,
         saved: state.saved,
+        lastModifiedAt: state.lastModifiedAt,
       }),
     },
   ),

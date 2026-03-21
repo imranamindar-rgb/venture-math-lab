@@ -26,6 +26,7 @@ interface ActiveScenarioPanelProps {
   guidanceTitle: string;
   guidanceBody: string;
   hintWhenReady: string;
+  defaultCollapsed?: boolean;
   primaryAction?: PrimaryAction;
 }
 
@@ -35,19 +36,25 @@ export function ActiveScenarioPanel({
   guidanceTitle,
   guidanceBody,
   hintWhenReady,
+  defaultCollapsed = false,
   primaryAction,
 }: ActiveScenarioPanelProps) {
   const {
     active,
     saved,
+    lastModifiedAt,
     setActivePreset,
     updateActive,
     updateNested,
     saveScenario,
+    renameSaved,
+    deleteSaved,
     exportScenarioFile,
     importScenarioFile,
   } = useScenarioStore();
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [snapshotName, setSnapshotName] = useState("");
+  const [showEditor, setShowEditor] = useState(!defaultCollapsed);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const totalOwnership =
@@ -64,6 +71,15 @@ export function ActiveScenarioPanel({
     return hintWhenReady;
   }, [hintWhenReady, importStatus]);
   const diagnostics = useMemo(() => analyzeScenario(active), [active]);
+  const lastModifiedLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(new Date(lastModifiedAt)),
+    [lastModifiedAt],
+  );
 
   const handleExport = () => {
     const payload = exportScenarioFile("active");
@@ -136,12 +152,39 @@ export function ActiveScenarioPanel({
             <p className="mt-2 leading-6">{guidanceBody}</p>
             <p className="mt-3 text-sm leading-6 text-slate-600">{diagnostics.summary}</p>
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant={showEditor ? "secondary" : "primary"} onClick={() => setShowEditor((current) => !current)}>
+              {showEditor ? "Hide scenario controls" : "Adjust scenario controls"}
+            </Button>
+            <p className="text-sm text-slate-500">
+              {showEditor
+                ? "Expert inputs are open. Close them to go back to the answer-first view."
+                : "The full modeling surface is hidden until you want to tune assumptions."}
+            </p>
+          </div>
 
-          <ScenarioEditor
-            config={active}
-            onChange={updateActive}
-            onNestedChange={(key, patch) => updateNested("active", key, patch)}
-          />
+          {!showEditor ? (
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Stage</p>
+                <p className="mt-2 font-semibold text-slate-900">{active.currentStage.replace("_", " ")}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Current instrument</p>
+                <p className="mt-2 font-semibold text-slate-900">{active.currentRoundKind.replaceAll("_", " ")}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Quick answer</p>
+                <p className="mt-2 font-semibold text-slate-900">{hintWhenReady}</p>
+              </div>
+            </div>
+          ) : (
+            <ScenarioEditor
+              config={active}
+              onChange={updateActive}
+              onNestedChange={(key, patch) => updateNested("active", key, patch)}
+            />
+          )}
         </div>
       </Card>
 
@@ -152,7 +195,20 @@ export function ActiveScenarioPanel({
               {primaryAction.loading ? primaryAction.busyLabel ?? primaryAction.label : primaryAction.label}
             </Button>
           ) : null}
-          <Button variant="secondary" onClick={() => saveScenario("active")}>
+          <input
+            type="text"
+            value={snapshotName}
+            onChange={(event) => setSnapshotName(event.target.value)}
+            placeholder="Name this snapshot"
+            className="min-w-[200px] rounded-full border border-border bg-white px-4 py-2 text-sm"
+          />
+          <Button
+            variant="secondary"
+            onClick={() => {
+              saveScenario("active", snapshotName);
+              setSnapshotName("");
+            }}
+          >
             Save snapshot
           </Button>
           <Button variant="secondary" onClick={handleExport}>
@@ -184,6 +240,7 @@ export function ActiveScenarioPanel({
           . The engine normalizes the mix if it is not exactly 100%.
         </p>
         <p className="mt-2 text-sm text-slate-500">{importHint}</p>
+        <p className="mt-2 text-sm text-slate-500">Scenario state synced across modules. Last edit {lastModifiedLabel}.</p>
         {diagnostics.issues.length > 0 ? (
           <div className="mt-4 space-y-2">
             {diagnostics.issues.slice(0, 4).map((issue) => (
@@ -198,16 +255,38 @@ export function ActiveScenarioPanel({
           </div>
         ) : null}
         {saved.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {saved.slice(0, 4).map((snapshot) => (
-              <button
+          <div className="mt-4 space-y-2">
+            {saved.slice(0, 6).map((snapshot) => (
+              <div
                 key={snapshot.id}
-                type="button"
-                onClick={() => updateActive(snapshot.config)}
-                className="rounded-full border border-border px-3 py-1.5 text-xs text-slate-600 hover:border-primary/40 hover:text-slate-950"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
               >
-                {snapshot.name}
-              </button>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-900">{snapshot.name}</p>
+                  <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                    Saved {new Date(snapshot.createdAt).toLocaleString("en-US")}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={() => updateActive(snapshot.config)}>
+                    Load
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      const nextName = window.prompt("Rename snapshot", snapshot.name);
+                      if (nextName !== null) {
+                        renameSaved(snapshot.id, nextName);
+                      }
+                    }}
+                  >
+                    Rename
+                  </Button>
+                  <Button variant="secondary" onClick={() => deleteSaved(snapshot.id)}>
+                    Delete
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         ) : null}

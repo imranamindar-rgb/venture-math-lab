@@ -7,7 +7,9 @@ import {
   PreferredOwnerGroup,
   PreferredSeriesSnapshot,
   PreferredTermsConfig,
+  PreferredSeriesType,
 } from "@/lib/sim/types";
+import { roundCurrency, roundShares } from "@/lib/precision";
 
 const BASE_SHARES = 10_000_000;
 
@@ -32,6 +34,7 @@ function createPreferredSeries(
   id: string,
   label: string,
   ownerGroup: PreferredOwnerGroup,
+  seriesType: PreferredSeriesType,
   shares: number,
   liquidationPreference: number,
   seniority: number,
@@ -42,13 +45,14 @@ function createPreferredSeries(
     id,
     label,
     ownerGroup,
-    shares,
-    liquidationPreference,
+    seriesType,
+    shares: roundShares(shares),
+    liquidationPreference: roundCurrency(liquidationPreference),
     participationMode: terms.participationMode,
     liquidationMultiple: terms.liquidationMultiple,
     antiDilutionMode: terms.antiDilutionMode,
     seniority,
-    referencePricePerShare,
+    referencePricePerShare: roundCurrency(referencePricePerShare),
   };
 }
 
@@ -79,7 +83,12 @@ export function addPreferredSeries(snapshot: CapTableSnapshot, series: Preferred
   if (series.shares <= 0 && series.liquidationPreference <= 0) {
     return;
   }
-  snapshot.preferredSeries.push(series);
+  snapshot.preferredSeries.push({
+    ...series,
+    shares: roundShares(series.shares),
+    liquidationPreference: roundCurrency(series.liquidationPreference),
+    referencePricePerShare: roundCurrency(series.referencePricePerShare),
+  });
 }
 
 export function createInitialCapTable(config: ScenarioConfig): CapTableSnapshot {
@@ -97,12 +106,12 @@ export function createInitialCapTable(config: ScenarioConfig): CapTableSnapshot 
       : 0;
 
   const incumbentShareScale = 1 - totalNewInvestorOwnership;
-  const founderCommon = BASE_SHARES * base.founder * incumbentShareScale;
-  const employeeCommon = BASE_SHARES * base.employeeCommon * incumbentShareScale;
-  const employeePool = BASE_SHARES * base.employeePool * incumbentShareScale;
-  const priorInvestorShares = BASE_SHARES * base.priorInvestor * incumbentShareScale;
-  const syndicateShares = BASE_SHARES * syndicateOwnership;
-  const modeledInvestorShares = BASE_SHARES * modeledInvestorOwnership;
+  const founderCommon = roundShares(BASE_SHARES * base.founder * incumbentShareScale);
+  const employeeCommon = roundShares(BASE_SHARES * base.employeeCommon * incumbentShareScale);
+  const employeePool = roundShares(BASE_SHARES * base.employeePool * incumbentShareScale);
+  const priorInvestorShares = roundShares(BASE_SHARES * base.priorInvestor * incumbentShareScale);
+  const syndicateShares = roundShares(BASE_SHARES * syndicateOwnership);
+  const modeledInvestorShares = roundShares(BASE_SHARES * modeledInvestorOwnership);
   const preferredSeries: PreferredSeriesSnapshot[] = [];
 
   if (priorInvestorShares > 0) {
@@ -111,6 +120,7 @@ export function createInitialCapTable(config: ScenarioConfig): CapTableSnapshot 
         "prior-existing",
         "Existing prior preferred",
         "prior",
+        "priced",
         priorInvestorShares,
         financing.referencePostMoney * base.priorInvestor * incumbentShareScale,
         1,
@@ -125,6 +135,7 @@ export function createInitialCapTable(config: ScenarioConfig): CapTableSnapshot 
         "current-syndicate",
         `${config.currentStage.replace("_", " ")} syndicate`,
         "prior",
+        "priced",
         syndicateShares,
         financing.syndicateCheck,
         2,
@@ -139,6 +150,7 @@ export function createInitialCapTable(config: ScenarioConfig): CapTableSnapshot 
         "current-modeled",
         `Modeled ${config.currentStage.replace("_", " ")} investor`,
         "modeled",
+        "priced",
         modeledInvestorShares,
         config.currentRoundKind === "priced_preferred" ? financing.modeledInvestorCheck : 0,
         2,
@@ -153,12 +165,12 @@ export function createInitialCapTable(config: ScenarioConfig): CapTableSnapshot 
     employeePool,
     preferredSeries,
     secondaryCommon: 0,
-    modeledInvestorInvested: financing.modeledInvestorCheck,
+    modeledInvestorInvested: roundCurrency(financing.modeledInvestorCheck),
     safeOutstanding:
-      config.currentRoundKind === "safe_post_money" && config.safe.enabled ? financing.modeledInvestorCheck : 0,
+      config.currentRoundKind === "safe_post_money" && config.safe.enabled ? roundCurrency(financing.modeledInvestorCheck) : 0,
     safePostMoneyCap: config.currentRoundKind === "safe_post_money" ? config.safe.postMoneyCap : 0,
     noteOutstanding:
-      config.currentRoundKind === "convertible_note_cap" && config.note.enabled ? financing.modeledInvestorCheck : 0,
+      config.currentRoundKind === "convertible_note_cap" && config.note.enabled ? roundCurrency(financing.modeledInvestorCheck) : 0,
     realizedFounderSecondary: 0,
     realizedEmployeeSecondary: 0,
   };
@@ -209,7 +221,7 @@ export function topUpOptionPool(snapshot: CapTableSnapshot, targetPercent: numbe
   const total = getFullyDilutedShares(snapshot);
   const targetShares = (targetPercent * total - snapshot.employeePool) / (1 - targetPercent);
   const addedShares = Math.max(0, targetShares);
-  snapshot.employeePool += addedShares;
+  snapshot.employeePool = roundShares(snapshot.employeePool + addedShares);
   return addedShares;
 }
 
@@ -222,9 +234,9 @@ export function applySecondaryLiquidity(
   const founderSaleShares = snapshot.founderCommon * founderSaleFraction;
   const employeeSaleShares = snapshot.employeeCommon * employeeSaleFraction;
 
-  snapshot.founderCommon -= founderSaleShares;
-  snapshot.employeeCommon -= employeeSaleShares;
-  snapshot.secondaryCommon += founderSaleShares + employeeSaleShares;
-  snapshot.realizedFounderSecondary += founderSaleShares * pricePerShare;
-  snapshot.realizedEmployeeSecondary += employeeSaleShares * pricePerShare;
+  snapshot.founderCommon = roundShares(snapshot.founderCommon - founderSaleShares);
+  snapshot.employeeCommon = roundShares(snapshot.employeeCommon - employeeSaleShares);
+  snapshot.secondaryCommon = roundShares(snapshot.secondaryCommon + founderSaleShares + employeeSaleShares);
+  snapshot.realizedFounderSecondary = roundCurrency(snapshot.realizedFounderSecondary + founderSaleShares * pricePerShare);
+  snapshot.realizedEmployeeSecondary = roundCurrency(snapshot.realizedEmployeeSecondary + employeeSaleShares * pricePerShare);
 }

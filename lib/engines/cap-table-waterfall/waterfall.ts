@@ -1,4 +1,5 @@
 import { CapTableSnapshot, PreferredSeriesSnapshot, PreferredTermsConfig, WaterfallPayouts } from "@/lib/sim/types";
+import { allocateRoundedCurrency, roundCurrency } from "@/lib/precision";
 
 function getSafePayout(snapshot: CapTableSnapshot, remaining: number) {
   const safeAsConvertedValue =
@@ -84,65 +85,35 @@ function evaluateConversionSet(
 function chooseStableConversionSet(snapshot: CapTableSnapshot, availableCash: number) {
   const allSeries = snapshot.preferredSeries;
   const convertible = allSeries.filter((entry) => entry.participationMode === "non_participating");
-  const cache = new Map<string, ReturnType<typeof evaluateConversionSet>>();
+  let conversionSet = new Set<string>();
+  let evaluation = evaluateConversionSet(snapshot, allSeries, availableCash, conversionSet);
 
-  function getEvaluation(set: Set<string>) {
-    const key = [...set].sort().join("|");
-    const cached = cache.get(key);
-    if (cached) {
-      return cached;
-    }
-    const evaluation = evaluateConversionSet(snapshot, allSeries, availableCash, set);
-    cache.set(key, evaluation);
-    return evaluation;
-  }
-
-  const stableSets: Array<{ set: Set<string>; convertedShares: number; evaluation: ReturnType<typeof evaluateConversionSet> }> = [];
-  const totalCombos = 1 << convertible.length;
-
-  for (let mask = 0; mask < totalCombos; mask += 1) {
-    const set = new Set<string>();
-    for (let index = 0; index < convertible.length; index += 1) {
-      if (mask & (1 << index)) {
-        set.add(convertible[index].id);
-      }
-    }
-
-    const evaluation = getEvaluation(set);
-    let stable = true;
+  for (let iteration = 0; iteration < Math.max(4, convertible.length + 2); iteration += 1) {
+    const nextSet = new Set<string>();
 
     for (const entry of convertible) {
-      const current = evaluation.seriesPayouts.find((item) => item.id === entry.id)?.payout ?? 0;
-      const altSet = new Set(set);
-      if (altSet.has(entry.id)) {
-        altSet.delete(entry.id);
-      } else {
-        altSet.add(entry.id);
-      }
-      const alternative = getEvaluation(altSet).seriesPayouts.find((item) => item.id === entry.id)?.payout ?? 0;
-      if (alternative > current + 1e-6) {
-        stable = false;
-        break;
+      const seriesResult = evaluation.seriesPayouts.find((item) => item.id === entry.id);
+      const preferenceValue = seriesResult?.preferencePayout ?? 0;
+      const asConvertedValue = entry.shares * evaluation.commonPrice;
+
+      if (asConvertedValue > preferenceValue + 1e-6) {
+        nextSet.add(entry.id);
       }
     }
+
+    const stable =
+      nextSet.size === conversionSet.size &&
+      [...nextSet].every((id) => conversionSet.has(id));
+
+    conversionSet = nextSet;
+    evaluation = evaluateConversionSet(snapshot, allSeries, availableCash, conversionSet);
 
     if (stable) {
-      stableSets.push({
-        set,
-        convertedShares: convertible
-          .filter((entry) => set.has(entry.id))
-          .reduce((total, entry) => total + entry.shares, 0),
-        evaluation,
-      });
+      return evaluation;
     }
   }
 
-  if (stableSets.length === 0) {
-    return getEvaluation(new Set<string>());
-  }
-
-  stableSets.sort((a, b) => b.convertedShares - a.convertedShares);
-  return stableSets[0].evaluation;
+  return evaluation;
 }
 
 function buildStructureLabel(seriesPayouts: WaterfallPayouts["seriesPayouts"]) {
@@ -177,18 +148,13 @@ export function computeWaterfall(
   },
 ): WaterfallPayouts {
   let remaining = exitValue;
-  const notePayout = Math.min(remaining, snapshot.noteOutstanding);
+  const notePayout = roundCurrency(Math.min(remaining, snapshot.noteOutstanding));
   remaining -= notePayout;
-  const safePayout = getSafePayout(snapshot, remaining);
+  const safePayout = roundCurrency(getSafePayout(snapshot, remaining));
   remaining -= safePayout;
 
   const evaluation = chooseStableConversionSet(snapshot, remaining);
-  const preferredPayout = evaluation.seriesPayouts.reduce((total, entry) => total + entry.preferencePayout, 0);
-  const commonPayout = evaluation.remaining;
-  const founderPayout = snapshot.founderCommon * evaluation.commonPrice;
-  const employeeGrossPayout = snapshot.employeeCommon * evaluation.commonPrice;
-  const employeeNetPayout = Math.max(0, employeeGrossPayout - employeeExerciseCost);
-  const seriesPayouts = snapshot.preferredSeries.map((series) => {
+  const rawSeriesPayouts = snapshot.preferredSeries.map((series) => {
     const result = evaluation.seriesPayouts.find((entry) => entry.id === series.id);
     const preferencePayout = result?.preferencePayout ?? 0;
     const commonPayoutForSeries = result?.commonPayout ?? 0;
@@ -203,6 +169,7 @@ export function computeWaterfall(
     return {
       id: series.id,
       label: series.label,
+      seriesType: series.seriesType,
       ownerGroup: series.ownerGroup,
       seniority: series.seniority,
       shares: series.shares,
@@ -214,14 +181,39 @@ export function computeWaterfall(
       structure,
     };
   });
+  const roundedCommonAllocations = allocateRoundedCurrency(
+    [
+      ...rawSeriesPayouts.map((entry) => entry.totalPayout),
+      snapshot.founderCommon * evaluation.commonPrice,
+      snapshot.employeeCommon * evaluation.commonPrice,
+      snapshot.secondaryCommon * evaluation.commonPrice,
+    ],
+    remaining,
+  );
+  const seriesPayouts = rawSeriesPayouts.map((entry, index) => ({
+    ...entry,
+    preferencePayout: roundCurrency(entry.preferencePayout),
+    commonPayout: roundCurrency(entry.commonPayout),
+    totalPayout: roundedCommonAllocations[index] ?? 0,
+  }));
+  const founderPayout = roundedCommonAllocations[rawSeriesPayouts.length] ?? 0;
+  const employeeGrossPayout = roundedCommonAllocations[rawSeriesPayouts.length + 1] ?? 0;
+  const secondaryCommonPayout = roundedCommonAllocations[rawSeriesPayouts.length + 2] ?? 0;
+  const employeeNetPayout = roundCurrency(Math.max(0, employeeGrossPayout - employeeExerciseCost));
+  const preferredPayout = roundCurrency(seriesPayouts.reduce((total, entry) => total + entry.preferencePayout, 0));
+  const commonPayout = roundCurrency(
+    founderPayout +
+      employeeGrossPayout +
+      secondaryCommonPayout +
+      seriesPayouts.reduce((total, entry) => total + entry.commonPayout, 0),
+  );
   const investorPreferredPayout = seriesPayouts
     .filter((entry) => entry.ownerGroup === "modeled")
     .reduce((total, entry) => total + entry.totalPayout, 0);
   const priorInvestorPayout = seriesPayouts
     .filter((entry) => entry.ownerGroup === "prior")
     .reduce((total, entry) => total + entry.totalPayout, 0);
-  const investorPayout = investorPreferredPayout + notePayout + safePayout;
-  const secondaryCommonPayout = snapshot.secondaryCommon * evaluation.commonPrice;
+  const investorPayout = roundCurrency(investorPreferredPayout + notePayout + safePayout);
   const preferredConverted = seriesPayouts.length > 0 && seriesPayouts.every((entry) => entry.converted);
 
   return {

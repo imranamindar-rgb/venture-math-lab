@@ -15,6 +15,20 @@ This document is intentionally strict. A `9+` product is not one with many featu
 - Investor and venture realism: `7.1 / 10`
 - Institutional and boardroom polish: `6.8 / 10`
 
+### Single biggest product problem
+
+The app still risks asking users to understand the engine architecture before they get value.
+
+That is the wrong order.
+
+For first-time founders and LP-style evaluators, the product must lead with:
+
+- the headline answer
+- the minimum inputs needed to get that answer
+- the explanation only after the answer appears
+
+If the product leads with a wall of inputs, it will feel more like a model interface than a decision tool.
+
 ### What a 9+ means here
 
 To earn `9+`, the app must be:
@@ -83,6 +97,28 @@ Required:
 - highly credible benchmark layer
 - excellent compare and narrative surfaces
 - complaint resistance from sophisticated daily users
+
+## The Six Workstreams That Actually Matter
+
+## 0. Answer-First Onboarding
+
+### Goal
+
+Make the first useful insight appear before the user has to understand the entire model.
+
+### Required work
+
+- default the main workflows to Quick mode, not full expert mode
+- ensure the first screen shows the answer layer before the full input layer
+- reduce first-run founder burden to the smallest set of inputs that produces a real insight
+- give LP and GP users clear fund presets with framing before they edit raw assumptions
+- make the app explain the engines after the answer, not before the answer
+
+### Done means
+
+- a first-time founder can answer “is this round good for me?” in under 90 seconds
+- a fund user can answer “is this construction under-diversified?” without reverse-engineering the assumptions
+- the product feels like it leads with judgment, not data entry
 
 ## The Six Workstreams That Actually Matter
 
@@ -173,6 +209,8 @@ Make the product feel premium, composed, and hard to ridicule.
 - unify metric card behavior and breakpoint strategy
 - improve hierarchy, typography rhythm, and chart framing
 - make empty, loading, and export states feel intentional
+- reduce helper-copy density on first-run screens
+- ensure every primary page leads with one obvious headline answer before secondary explanation
 
 ### Done means
 
@@ -208,6 +246,8 @@ These are non-negotiable.
 6. Support-status boundaries must be obvious.
 7. Responsive behavior must feel composed on desktop, tablet, and mobile.
 8. A fresh institutional review must produce no major trust failures.
+9. A first-time founder must reach a useful answer before seeing the full expert input surface.
+10. Fund defaults must not teach a structurally pessimistic lesson without explicit framing.
 
 ## Sprint Sequence
 
@@ -219,6 +259,8 @@ Focus:
 - finish money-input rollout across all relevant forms
 - tighten labels, hints, and validation
 - remove remaining obvious UI trust leaks
+- move key workflows to answer-first presentation
+- make Quick mode the real default founder path
 
 Exit criteria:
 
@@ -231,6 +273,7 @@ Focus:
 - upgrade report and compare surfaces
 - improve export dignity
 - add clearer assumptions, captions, and support labeling
+- tighten founder and LP onboarding so preset answers appear before the full modeling surface
 
 Exit criteria:
 
@@ -256,6 +299,7 @@ Focus:
 - better narrative explanations
 - benchmark citations in-app
 - stronger visual polish and interaction quality
+- true guided dashboard path from concept to live scenario
 
 Exit criteria:
 

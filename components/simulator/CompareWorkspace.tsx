@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, startTransition } from "react";
+import { useEffect, startTransition } from "react";
 
 import { presetOptions, useScenarioStore } from "@/lib/state/scenario-store";
 import { useSimulationRunner } from "@/components/simulator/useSimulationRunner";
@@ -10,7 +10,7 @@ import { SupportBadge } from "@/components/ui/SupportBadge";
 import { analyzeScenario } from "@/lib/scenario-diagnostics";
 import { getCurrentFinancing } from "@/lib/current-financing";
 import { buildComparisonCsv, buildComparisonMarkdown } from "@/lib/export";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { buildComparisonPayload } from "@/lib/reporting";
 
 function downloadText(filename: string, payload: string, type: string) {
@@ -47,10 +47,9 @@ function ComparisonColumn({
 }
 
 export function CompareWorkspace() {
-  const { active, comparison, setActivePreset, setComparisonPreset } = useScenarioStore();
+  const { active, comparison, saved, setActivePreset, setComparisonPreset, loadSaved } = useScenarioStore();
   const { run: runActive, summary: baseline } = useSimulationRunner();
   const { run: runComparison, summary: stress } = useSimulationRunner();
-  const lastAutoRunKey = useRef<string | null>(null);
   const baselineDiagnostics = analyzeScenario(active);
   const comparisonDiagnostics = analyzeScenario(comparison);
   const baselineFinancing = getCurrentFinancing(active);
@@ -59,14 +58,11 @@ export function CompareWorkspace() {
     baseline && stress ? buildComparisonPayload(active, comparison, baseline, stress) : null;
 
   useEffect(() => {
-    const runKey = `${active.id}:${comparison.id}`;
-    if (lastAutoRunKey.current === runKey) {
-      return;
-    }
-
-    lastAutoRunKey.current = runKey;
-    runActive(active);
-    runComparison(comparison);
+    const timeout = window.setTimeout(() => {
+      runActive(active);
+      runComparison(comparison);
+    }, 250);
+    return () => window.clearTimeout(timeout);
   }, [active, comparison, runActive, runComparison]);
 
   return (
@@ -137,6 +133,20 @@ export function CompareWorkspace() {
             ))}
           </select>
           <p className="mt-3 text-sm text-slate-600">{active.description}</p>
+          {saved.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {saved.slice(0, 4).map((snapshot) => (
+                <button
+                  key={`baseline-${snapshot.id}`}
+                  type="button"
+                  onClick={() => loadSaved(snapshot.id, "active")}
+                  className="rounded-full border border-border px-3 py-1.5 text-xs text-slate-600 hover:border-primary/40 hover:text-slate-950"
+                >
+                  Load {snapshot.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </Card>
         <Card>
           <div className="flex items-center justify-between gap-3">
@@ -155,6 +165,20 @@ export function CompareWorkspace() {
             ))}
           </select>
           <p className="mt-3 text-sm text-slate-600">{comparison.description}</p>
+          {saved.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {saved.slice(0, 4).map((snapshot) => (
+                <button
+                  key={`comparison-${snapshot.id}`}
+                  type="button"
+                  onClick={() => loadSaved(snapshot.id, "comparison")}
+                  className="rounded-full border border-border px-3 py-1.5 text-xs text-slate-600 hover:border-primary/40 hover:text-slate-950"
+                >
+                  Load {snapshot.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </Card>
       </div>
 
@@ -218,6 +242,118 @@ export function CompareWorkspace() {
                   </li>
                 ))}
               </ul>
+            </Card>
+            <Card className="lg:col-span-2">
+              <h2 className="font-heading text-xl font-semibold">Decision matrix</h2>
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full border-separate border-spacing-y-2 text-sm text-slate-700">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-500">
+                      <th className="px-3 py-2">Metric</th>
+                      <th className="px-3 py-2">Baseline</th>
+                      <th className="px-3 py-2">Comparison</th>
+                      <th className="px-3 py-2">Delta</th>
+                      <th className="px-3 py-2">Why it matters</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      {
+                        label: "Current investor ownership",
+                        baseline: formatPercent(comparePayload?.baseline.deterministic.currentInvestorOwnership ?? 0),
+                        comparison: formatPercent(comparePayload?.comparison.deterministic.currentInvestorOwnership ?? 0),
+                        delta: formatPercent(
+                          (comparePayload?.comparison.deterministic.currentInvestorOwnership ?? 0) -
+                            (comparePayload?.baseline.deterministic.currentInvestorOwnership ?? 0),
+                        ),
+                        note: "This is the cleanest bridge between check size and eventual fund outcome.",
+                      },
+                      {
+                        label: "Break-even exit",
+                        baseline: formatCurrency(comparePayload?.baseline.deterministic.breakEvenExit ?? 0),
+                        comparison: formatCurrency(comparePayload?.comparison.deterministic.breakEvenExit ?? 0),
+                        delta: formatCurrency(
+                          (comparePayload?.comparison.deterministic.breakEvenExit ?? 0) -
+                            (comparePayload?.baseline.deterministic.breakEvenExit ?? 0),
+                        ),
+                        note: "Lower is better for the investor because less exit scale is needed to avoid loss.",
+                      },
+                      {
+                        label: "Return-the-fund exit",
+                        baseline: formatCurrency(comparePayload?.baseline.deterministic.returnTheFundExit ?? 0),
+                        comparison: formatCurrency(comparePayload?.comparison.deterministic.returnTheFundExit ?? 0),
+                        delta: formatCurrency(
+                          (comparePayload?.comparison.deterministic.returnTheFundExit ?? 0) -
+                            (comparePayload?.baseline.deterministic.returnTheFundExit ?? 0),
+                        ),
+                        note: "This is the real fund-level hurdle for a lead check.",
+                      },
+                      {
+                        label: "Founder median proceeds",
+                        baseline: formatCurrency(comparePayload?.baseline.simulation.founder.median ?? 0),
+                        comparison: formatCurrency(comparePayload?.comparison.simulation.founder.median ?? 0),
+                        delta: formatCurrency(
+                          (comparePayload?.comparison.simulation.founder.median ?? 0) -
+                            (comparePayload?.baseline.simulation.founder.median ?? 0),
+                        ),
+                        note: "Founder upside is where valuation, dilution, preferences, and timing all meet.",
+                      },
+                      {
+                        label: "Founder below 20%",
+                        baseline: formatPercent(
+                          comparePayload?.baseline.simulation.founder.ownershipThresholds[1]?.probability ?? 0,
+                        ),
+                        comparison: formatPercent(
+                          comparePayload?.comparison.simulation.founder.ownershipThresholds[1]?.probability ?? 0,
+                        ),
+                        delta: formatPercent(
+                          (comparePayload?.comparison.simulation.founder.ownershipThresholds[1]?.probability ?? 0) -
+                            (comparePayload?.baseline.simulation.founder.ownershipThresholds[1]?.probability ?? 0),
+                        ),
+                        note: "This exposes how fast the founder falls into venture-scale dilution territory.",
+                      },
+                      {
+                        label: "Employee underwater",
+                        baseline: formatPercent(comparePayload?.baseline.simulation.employee.underwaterProbability ?? 0),
+                        comparison: formatPercent(comparePayload?.comparison.simulation.employee.underwaterProbability ?? 0),
+                        delta: formatPercent(
+                          (comparePayload?.comparison.simulation.employee.underwaterProbability ?? 0) -
+                            (comparePayload?.baseline.simulation.employee.underwaterProbability ?? 0),
+                        ),
+                        note: "This tells you whether the option story is usable or mostly cosmetic.",
+                      },
+                      {
+                        label: "Post-close runway",
+                        baseline: `${(comparePayload?.baseline.operator.postRaiseRunwayMonths ?? 0).toFixed(1)} months`,
+                        comparison: `${(comparePayload?.comparison.operator.postRaiseRunwayMonths ?? 0).toFixed(1)} months`,
+                        delta: `${(
+                          (comparePayload?.comparison.operator.postRaiseRunwayMonths ?? 0) -
+                          (comparePayload?.baseline.operator.postRaiseRunwayMonths ?? 0)
+                        ).toFixed(1)} months`,
+                        note: "Headline financing only matters if it actually buys survival time.",
+                      },
+                      {
+                        label: "Acqui-hire founder proceeds",
+                        baseline: formatCurrency(comparePayload?.baseline.capTable.currentWaterfalls[0]?.founderProceeds ?? 0),
+                        comparison: formatCurrency(comparePayload?.comparison.capTable.currentWaterfalls[0]?.founderProceeds ?? 0),
+                        delta: formatCurrency(
+                          (comparePayload?.comparison.capTable.currentWaterfalls[0]?.founderProceeds ?? 0) -
+                            (comparePayload?.baseline.capTable.currentWaterfalls[0]?.founderProceeds ?? 0),
+                        ),
+                        note: "Downside waterfall differences often matter more than headline valuation gaps.",
+                      },
+                    ].map((row) => (
+                      <tr key={row.label} className="rounded-panel bg-slate-50">
+                        <td className="rounded-l-2xl px-3 py-3 font-semibold text-slate-900">{row.label}</td>
+                        <td className="px-3 py-3">{row.baseline}</td>
+                        <td className="px-3 py-3">{row.comparison}</td>
+                        <td className="px-3 py-3 font-semibold text-slate-900">{row.delta}</td>
+                        <td className="rounded-r-2xl px-3 py-3 text-slate-600">{row.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </Card>
             <Card>
               <h2 className="font-heading text-xl font-semibold">Risk-layer movement</h2>

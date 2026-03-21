@@ -15,26 +15,17 @@ export function OperatorWorkspace() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 2xl:grid-cols-[0.95fr,1.35fr]">
-        <ActiveScenarioPanel
-          modeLabel="Operator intelligence layer"
-          title="Operator Lab"
-          guidanceTitle="Cash reality versus financing ambition"
-          guidanceBody="This layer connects venture math to operating survival: runway, burn, gross margin, and the financing gap between current cash and the next benchmark round."
-          hintWhenReady={`Financing gap ${formatCurrency(summary.bufferGap)} to reach the next round with buffer.`}
-        />
+      <div className="space-y-6">
+        <Card>
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Operator output</p>
+          <h2 className="mt-2 font-heading text-2xl font-semibold">Cash discipline before capital strategy</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            A company can look venture-backable on cap-table math and still miss the next financing window if cash, burn, working capital, and financing friction are out of line.
+          </p>
+        </Card>
 
-        <div className="space-y-6">
-          <Card>
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Operator output</p>
-            <h2 className="mt-2 font-heading text-2xl font-semibold">Cash discipline before capital strategy</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-              A company can look venture-backable on cap-table math and still miss the next financing window if cash, burn, working capital, and financing friction are out of line.
-            </p>
-          </Card>
-
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
-            <Card className="min-w-0 overflow-hidden p-5">
+        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
+          <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Runway</p>
               <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
                 {summary.runwayMonths.toFixed(1)} months
@@ -69,12 +60,12 @@ export function OperatorWorkspace() {
               </p>
               <p className="mt-2 text-sm text-slate-600">Annualized burn divided by projected ARR growth over the next year</p>
             </Card>
-          </div>
+        </div>
 
-          <div className="grid gap-4 2xl:grid-cols-[1.05fr,0.95fr]">
-            <ProbabilityChart title="Operating Readiness Signals" data={summary.operatingSignals} />
-            <Card>
-              <h3 className="font-heading text-lg font-semibold">Operating checkpoints</h3>
+        <div className="grid gap-4 2xl:grid-cols-[1.05fr,0.95fr]">
+          <ProbabilityChart title="Operating Readiness Signals" data={summary.operatingSignals} />
+          <Card>
+            <h3 className="font-heading text-lg font-semibold">Operating checkpoints</h3>
               <dl className="mt-4 space-y-3 text-sm text-slate-700">
                 <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
                   <dt>Months to next benchmark round</dt>
@@ -105,12 +96,12 @@ export function OperatorWorkspace() {
                   <dd className="font-semibold">{summary.grossMarginBand}</dd>
                 </div>
               </dl>
-            </Card>
-          </div>
+          </Card>
+        </div>
 
-          <div className="grid gap-4 2xl:grid-cols-2">
-            <Card>
-              <h3 className="font-heading text-lg font-semibold">Simplified balance-sheet bridge</h3>
+        <div className="grid gap-4 2xl:grid-cols-2">
+          <Card>
+            <h3 className="font-heading text-lg font-semibold">Simplified balance-sheet bridge</h3>
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-full border-separate border-spacing-y-2 text-sm text-slate-700">
                   <thead>
@@ -134,10 +125,10 @@ export function OperatorWorkspace() {
                   </tbody>
                 </table>
               </div>
-            </Card>
+          </Card>
 
-            <Card>
-              <h3 className="font-heading text-lg font-semibold">Cash-flow bridge to next benchmark</h3>
+          <Card>
+            <h3 className="font-heading text-lg font-semibold">Cash-flow bridge to next benchmark</h3>
               <div className="mt-4 space-y-3">
                 {summary.cashFlowBridge.map((line) => (
                   <div key={line.label} className="rounded-2xl bg-slate-50 px-4 py-3">
@@ -149,11 +140,11 @@ export function OperatorWorkspace() {
                   </div>
                 ))}
               </div>
-            </Card>
-          </div>
+          </Card>
+        </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="min-w-0 overflow-hidden p-5">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Working capital</p>
               <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
                 {formatCurrency(summary.workingCapital)}
@@ -174,10 +165,10 @@ export function OperatorWorkspace() {
               </p>
               <p className="mt-2 text-sm text-slate-600">{summary.financingClassification} net of modeled transaction fees</p>
             </Card>
-          </div>
+        </div>
 
-          <Card>
-            <h3 className="font-heading text-lg font-semibold">Interpretation flags</h3>
+        <Card>
+          <h3 className="font-heading text-lg font-semibold">Interpretation flags</h3>
             <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
               {summary.warnings.map((warning) => (
                 <li key={warning} className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -185,8 +176,16 @@ export function OperatorWorkspace() {
                 </li>
               ))}
             </ul>
-          </Card>
-        </div>
+        </Card>
+
+        <ActiveScenarioPanel
+          defaultCollapsed
+          modeLabel="Operator intelligence layer"
+          title="Operator Lab"
+          guidanceTitle="Check survival first, then open the assumptions"
+          guidanceBody="The numbers above answer the core founder question: can this company survive to the next financing window? Open the controls only when you need to adjust the cash story."
+          hintWhenReady={`Financing gap ${formatCurrency(summary.bufferGap)} to reach the next round with buffer.`}
+        />
       </div>
     </div>
   );

@@ -1,3 +1,43 @@
+export const methodologyLimitations = [
+  "The app does not model warrants, capped participation, bespoke carve-outs, pay-to-play provisions, protective provisions, tax treatment, or custom legal drafting.",
+  "SAFE and note previews are auditable and line-by-line, but they still assume standard-friendly documents rather than a law-firm-grade charter recreation.",
+  "Monte Carlo confidence intervals are simulation-stability bounds, not confidence about the real startup market.",
+  "Benchmark overlays are calibration aids, not claims about what any one company or fund will achieve.",
+];
+
+export const methodologySources = [
+  {
+    name: "PitchBook-NVCA Venture Monitor",
+    metric: "stage valuations, round sizes, and funding cadence",
+    period: "2024-2025 editions",
+    role: "soft benchmark",
+  },
+  {
+    name: "Carta fundraising and dilution benchmark reporting",
+    metric: "founder ownership ranges, SAFE prevalence, and round dilution patterns",
+    period: "2024-2025 market reports",
+    role: "soft benchmark",
+  },
+  {
+    name: "Y Combinator SAFE documents and guides",
+    metric: "post-money SAFE structure and conversion framing",
+    period: "current standard forms",
+    role: "hard benchmark",
+  },
+  {
+    name: "NVCA model legal documents",
+    metric: "standard preferred-stock framing and liquidation preference norms",
+    period: "current model-document set",
+    role: "contextual reference",
+  },
+  {
+    name: "OECD and other widely cited AI funding reports",
+    metric: "AI premium overlay as an explanatory market regime, not a precise underwriting claim",
+    period: "recent public reports",
+    role: "contextual reference",
+  },
+];
+
 export const methodologySections = [
   {
     title: "Three-Engine Architecture",
@@ -43,8 +83,8 @@ export const methodologySections = [
     title: "Priced vs Unpriced Rounds",
     body: [
       "Priced preferred rounds set exact ownership at the moment capital goes in.",
-      "Post-money SAFEs are modeled as future ownership claims that convert on the next qualified financing using cap logic.",
-      "Convertible notes are modeled separately from SAFEs because they accrue interest and stay senior to equity in weak outcomes.",
+      "Post-money SAFEs are modeled as future ownership claims that convert on the next qualified financing at the better of the cap or the priced-round share economics, including discount logic when configured.",
+      "Convertible notes are modeled separately from SAFEs because they accrue interest, convert at the better of cap or discount, and stay senior to equity in weak outcomes.",
     ],
   },
   {

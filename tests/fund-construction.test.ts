@@ -11,10 +11,10 @@ describe("fund construction engine", () => {
     const config = getDefaultFundConstructionConfig();
     const summary = summarizeFundConstruction(config);
 
-    expect(summary.managementFees).toBeCloseTo(12_000_000, 6);
-    expect(summary.investableCapital).toBeCloseTo(48_000_000, 6);
-    expect(summary.initialDeploymentBudget).toBeCloseTo(24_000_000, 6);
-    expect(summary.reserveBudget).toBeCloseTo(24_000_000, 6);
+    expect(summary.managementFees).toBeCloseTo(20_000_000, 6);
+    expect(summary.investableCapital).toBeCloseTo(80_000_000, 6);
+    expect(summary.initialDeploymentBudget).toBeCloseTo(52_000_000, 6);
+    expect(summary.reserveBudget).toBeCloseTo(28_000_000, 6);
   });
 
   it("is reproducible for the same seed and config", () => {
@@ -45,5 +45,16 @@ describe("fund construction engine", () => {
     expect(sanitized.reserveRatio).toBe(0.8);
     expect(sanitized.targetOwnership).toBe(0.01);
     expect(sanitized.simulationCount).toBe(500);
+  });
+
+  it("builds a median J-curve timeline with DPI, TVPI, and paid-in ratios", () => {
+    const config = getDefaultFundConstructionConfig();
+    config.simulationCount = 1_000;
+    const summary = summarizeFundConstruction(config);
+
+    expect(summary.timeline).toHaveLength(config.fundLifeYears + 1);
+    expect(summary.timeline[0]?.dpiMedian).toBe(0);
+    expect(summary.timeline.at(-1)?.paidInRatioMedian).toBeGreaterThan(0);
+    expect(summary.timeline.at(-1)?.tvpiMedian).toBeGreaterThan(0);
   });
 });

@@ -14,6 +14,32 @@ function rowsToCsv(rows: Array<Array<string | number>>) {
   return rows.map((row) => row.map(escapeCsv).join(",")).join("\n");
 }
 
+function flattenValue(
+  value: unknown,
+  prefix: string,
+  rows: Array<[string, string]>,
+) {
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => flattenValue(entry, `${prefix}[${index}]`, rows));
+    return;
+  }
+
+  if (value && typeof value === "object") {
+    Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
+      flattenValue(entry, prefix ? `${prefix}.${key}` : key, rows);
+    });
+    return;
+  }
+
+  rows.push([prefix, value == null ? "" : String(value)]);
+}
+
+function flattenScenarioConfig(config: ScenarioConfig) {
+  const rows: Array<[string, string]> = [];
+  flattenValue(config, "", rows);
+  return rows;
+}
+
 export function buildScenarioCsv(config: ScenarioConfig, provided?: SimulationSummary) {
   const payload = buildScenarioReportPayload(config, provided);
 
@@ -24,6 +50,7 @@ export function buildScenarioCsv(config: ScenarioConfig, provided?: SimulationSu
     ["Metadata", "Engine version", payload.engineVersion, ""],
     ["Scenario", "Name", config.name, config.description],
     ["Scenario", "Support", payload.diagnostics.supportLabel, payload.diagnostics.summary],
+    ...flattenScenarioConfig(config).map(([path, value]) => ["Input", path, value, ""]),
     ...payload.executiveSummary.map((line, index) => ["Executive summary", `Point ${index + 1}`, line, ""]),
     ...payload.diagnostics.assumptions.map((assumption) => ["Assumption", assumption.label, assumption.value, ""]),
     ...payload.diagnostics.issues.map((issue) => ["Issue", issue.title, issue.level, issue.detail]),
@@ -39,11 +66,29 @@ export function buildScenarioCsv(config: ScenarioConfig, provided?: SimulationSu
       `Founder ${formatPercent(round.founderOwnership)} | Investor ${formatPercent(round.investorOwnership)}`,
     ]),
     ["Simulation", "Founder median", formatCurrency(payload.simulation.founder.median), ""],
+    [
+      "Simulation",
+      "Founder median 95% CI",
+      `${formatCurrency(payload.simulation.confidence.founderMedian.lower)} to ${formatCurrency(payload.simulation.confidence.founderMedian.upper)}`,
+      "Batch-estimated Monte Carlo stability interval",
+    ],
     ["Simulation", "Employee median", formatCurrency(payload.simulation.employee.median), ""],
     ["Simulation", "Investor median", formatCurrency(payload.simulation.investor.median), ""],
     ["Simulation", "Founder below 20%", formatPercent(payload.simulation.founder.ownershipThresholds[1]?.probability ?? 0), ""],
     ["Simulation", "Employee underwater", formatPercent(payload.simulation.employee.underwaterProbability), ""],
+    [
+      "Simulation",
+      "Employee underwater 95% CI",
+      `${formatPercent(payload.simulation.confidence.employeeUnderwaterProbability.lower)} to ${formatPercent(payload.simulation.confidence.employeeUnderwaterProbability.upper)}`,
+      "Batch-estimated Monte Carlo stability interval",
+    ],
     ["Simulation", "Investor return-the-fund", formatPercent(payload.simulation.investor.returnTheFundProbability), ""],
+    [
+      "Simulation",
+      "Investor return-the-fund 95% CI",
+      `${formatPercent(payload.simulation.confidence.investorReturnTheFundProbability.lower)} to ${formatPercent(payload.simulation.confidence.investorReturnTheFundProbability.upper)}`,
+      "Batch-estimated Monte Carlo stability interval",
+    ],
     ...payload.simulation.outcomeMix.map((metric) => ["Outcome mix", metric.label, formatPercent(metric.probability), ""]),
     ["Operator", "Runway months", payload.operator.runwayMonths.toFixed(1), ""],
     ["Operator", "Post-close runway", payload.operator.postRaiseRunwayMonths.toFixed(1), ""],
@@ -100,8 +145,11 @@ export function buildScenarioMarkdown(config: ScenarioConfig, provided?: Simulat
     "",
     "## Monte Carlo",
     `- Founder median: ${formatCurrency(payload.simulation.founder.median)}`,
+    `- Founder median 95% CI: ${formatCurrency(payload.simulation.confidence.founderMedian.lower)} to ${formatCurrency(payload.simulation.confidence.founderMedian.upper)}`,
     `- Employee underwater: ${formatPercent(payload.simulation.employee.underwaterProbability)}`,
+    `- Employee underwater 95% CI: ${formatPercent(payload.simulation.confidence.employeeUnderwaterProbability.lower)} to ${formatPercent(payload.simulation.confidence.employeeUnderwaterProbability.upper)}`,
     `- Investor return-the-fund: ${formatPercent(payload.simulation.investor.returnTheFundProbability)}`,
+    `- Investor return-the-fund 95% CI: ${formatPercent(payload.simulation.confidence.investorReturnTheFundProbability.lower)} to ${formatPercent(payload.simulation.confidence.investorReturnTheFundProbability.upper)}`,
     `- Power-law spread: ${formatMultiple(payload.simulation.meanVsMedianSpread)}`,
     "",
     "## Operator Reality",

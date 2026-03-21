@@ -86,11 +86,27 @@ export function analyzeScenario(config: ScenarioConfig): ScenarioDiagnostics {
     });
   }
 
-  if (config.currentRoundKind !== "priced_preferred") {
+  if (config.currentRoundKind === "safe_post_money" && config.safe.enabled && config.safe.discountRate > 0) {
     issues.push({
-      level: "approximate",
-      title: "Current ownership is still forward-estimated",
-      detail: "SAFE and note scenarios estimate ownership until a qualified financing converts the instrument into priced shares.",
+      level: "standard",
+      title: "SAFE preview uses cap versus discounted round price",
+      detail: "The qualified-financing preview now converts the SAFE at the better of the post-money cap or discounted round price. Final shares still depend on the actual priced round.",
+    });
+  }
+
+  if (config.currentRoundKind === "safe_post_money" && config.safe.enabled && config.safe.discountRate === 0) {
+    issues.push({
+      level: "standard",
+      title: "SAFE preview uses cap versus priced round",
+      detail: "The qualified-financing preview converts the SAFE at the better of the post-money cap or actual round price. Final shares still depend on the actual priced round.",
+    });
+  }
+
+  if (config.currentRoundKind === "convertible_note_cap" && config.note.enabled) {
+    issues.push({
+      level: "standard",
+      title: "Note preview uses cap versus discount",
+      detail: "The qualified-financing preview converts the note at the better of cap or discount and keeps the note senior to equity in weak exits.",
     });
   }
 
@@ -185,6 +201,7 @@ export function analyzeScenario(config: ScenarioConfig): ScenarioDiagnostics {
     { label: "Working capital", value: `${formatCurrencyCompact(config.operating.accountsReceivable + config.operating.inventory - config.operating.accountsPayable)}` },
     { label: "Transaction fees", value: formatCurrencyCompact(config.operating.transactionFees) },
     { label: "Monte Carlo paths", value: config.controls.iterations.toLocaleString("en-US") },
+    { label: "Pareto alpha", value: (config.controls.paretoAlpha ?? 1.55).toFixed(2) },
   ];
 
   return {

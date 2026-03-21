@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-03-20T19:33:56.581Z",
+  "generatedAt": "2026-03-21T09:43:26.515Z",
   "measurements": [
     {
       "scenarioId": "nvca_standard",
       "iterations": 10000,
-      "firstRunMs": 1493.49,
-      "secondRunMs": 1382.84
+      "firstRunMs": 322.76,
+      "secondRunMs": 146.09
     }
   ]
 }

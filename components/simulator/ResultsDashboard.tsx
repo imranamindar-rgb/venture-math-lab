@@ -8,6 +8,10 @@ import { ProbabilityChart } from "@/components/charts/ProbabilityChart";
 import { formatCompactNumber, formatCurrency, formatMultiple, formatPercent } from "@/lib/format";
 import { SimulationSummary } from "@/lib/sim/types";
 
+function confidenceLabel(lower: number, upper: number, formatter: (value: number) => string) {
+  return `${formatter(lower)} to ${formatter(upper)}`;
+}
+
 function MetricCard({
   label,
   value,
@@ -38,17 +42,17 @@ export function ResultsDashboard({ summary }: { summary: SimulationSummary }) {
         <MetricCard
           label={`Founder ${summary.founder.riskBand}`}
           value={formatCurrency(summary.founder.median)}
-          caption={`P10 ${formatCurrency(summary.founder.p10)} to P90 ${formatCurrency(summary.founder.p90)}`}
+          caption={`P10 ${formatCurrency(summary.founder.p10)} to P90 ${formatCurrency(summary.founder.p90)}. 95% Monte Carlo CI ${confidenceLabel(summary.confidence.founderMedian.lower, summary.confidence.founderMedian.upper, formatCurrency)}.`}
         />
         <MetricCard
           label={`Employee ${summary.employee.riskBand}`}
           value={formatCurrency(summary.employee.median)}
-          caption={`Underwater risk ${formatPercent(summary.employee.underwaterProbability)}`}
+          caption={`Underwater risk ${formatPercent(summary.employee.underwaterProbability)}. 95% CI ${confidenceLabel(summary.confidence.employeeUnderwaterProbability.lower, summary.confidence.employeeUnderwaterProbability.upper, formatPercent)}.`}
         />
         <MetricCard
           label={`Investor ${summary.investor.riskBand}`}
           value={formatCurrency(summary.investor.median)}
-          caption={`Return-the-fund odds ${formatPercent(summary.investor.returnTheFundProbability)}`}
+          caption={`Return-the-fund odds ${formatPercent(summary.investor.returnTheFundProbability)}. 95% CI ${confidenceLabel(summary.confidence.investorReturnTheFundProbability.lower, summary.confidence.investorReturnTheFundProbability.upper, formatPercent)}.`}
         />
       </div>
 
@@ -122,6 +126,16 @@ export function ResultsDashboard({ summary }: { summary: SimulationSummary }) {
           <p className="mt-4 text-sm leading-6 text-slate-600">
             Mean-to-median spread is {formatMultiple(summary.meanVsMedianSpread)}. The wider that gap gets, the more the
             economics rely on rare power-law wins rather than typical outcomes.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Founder median 95% CI {confidenceLabel(summary.confidence.founderMedian.lower, summary.confidence.founderMedian.upper, formatCurrency)}.
+            Investor return-the-fund 95% CI{" "}
+            {confidenceLabel(
+              summary.confidence.investorReturnTheFundProbability.lower,
+              summary.confidence.investorReturnTheFundProbability.upper,
+              formatPercent,
+            )}
+            .
           </p>
         </Card>
         <Card>

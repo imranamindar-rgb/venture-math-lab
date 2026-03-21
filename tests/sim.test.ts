@@ -228,4 +228,19 @@ describe("venture math simulation", () => {
       getPreferredShares(weightedSnapshot, "modeled"),
     );
   });
+
+  it("converts SAFE shadow series into the same seniority layer as the priced round they join", () => {
+    const scenario = getScenarioPreset("nvca_standard");
+    scenario.currentRoundKind = "safe_post_money";
+    scenario.safe.enabled = true;
+    const snapshot = createInitialCapTable(scenario);
+
+    const conversionSeniority = 3;
+    maybeConvertSafe(snapshot, scenario, 18_000_000, true, conversionSeniority);
+    issuePreferredRound(snapshot, 18_000_000, 4_000_000, scenario, "Series A", conversionSeniority);
+
+    const modeledSeries = snapshot.preferredSeries.filter((series) => series.ownerGroup === "modeled");
+    expect(modeledSeries.some((series) => series.seriesType === "safe_shadow")).toBe(true);
+    expect(new Set(modeledSeries.map((series) => series.seniority)).size).toBe(1);
+  });
 });
