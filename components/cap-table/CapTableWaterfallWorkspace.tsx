@@ -4,13 +4,37 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { ActiveScenarioPanel } from "@/components/workspace/ActiveScenarioPanel";
-import { CapTableEvolutionSlider } from "@/components/cap-table/CapTableEvolutionSlider";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { formatCompactNumber, formatCurrency, formatPercent } from "@/lib/format";
+import { SupportBadge } from "@/components/ui/SupportBadge";
+import { Button } from "@/components/ui/Button";
 import { summarizeCapTableWaterfall } from "@/lib/engines/cap-table-waterfall/analysis";
-import { summarizeDeterministicFinance } from "@/lib/engines/deterministic-finance";
+import { getCurrentFinancing } from "@/lib/current-financing";
+import { formatCompactNumber, formatCurrency, formatPercent } from "@/lib/format";
+import { analyzeScenario } from "@/lib/scenario-diagnostics";
+import { replaceAllText } from "@/lib/compat";
 import { useScenarioStore } from "@/lib/state/scenario-store";
+
+type CapTableSummary = ReturnType<typeof summarizeCapTableWaterfall>;
+type PositionRows = CapTableSummary["currentRows"];
+type WaterfallRows = CapTableSummary["currentWaterfalls"];
+
+function MetricCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="mt-2 font-heading text-2xl font-semibold text-slate-900">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{detail}</p>
+    </div>
+  );
+}
 
 function PositionTable({
   title,
@@ -18,16 +42,18 @@ function PositionTable({
   totalShares,
 }: {
   title: string;
-  rows: ReturnType<typeof summarizeCapTableWaterfall>["currentRows"];
+  rows: PositionRows;
   totalShares: number;
 }) {
   return (
     <Card>
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="font-heading text-lg font-semibold">{title}</h3>
-        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-          Fully diluted {formatCompactNumber(totalShares)}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="font-heading text-xl font-semibold">{title}</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Fully diluted shares: {formatCompactNumber(totalShares)}
+          </p>
+        </div>
       </div>
       <div className="mt-4 overflow-x-auto">
         <table className="min-w-full border-separate border-spacing-y-2 text-sm text-slate-700">
@@ -41,11 +67,13 @@ function PositionTable({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.label} className="rounded-panel bg-slate-50">
+              <tr key={`${title}-${row.label}`} className="rounded-panel bg-slate-50">
                 <td className="rounded-l-2xl px-3 py-3 font-semibold text-slate-900">{row.label}</td>
                 <td className="px-3 py-3">{formatCompactNumber(row.shares)}</td>
                 <td className="px-3 py-3">{formatPercent(row.ownership)}</td>
-                <td className="rounded-r-2xl px-3 py-3">{row.preferenceAmount > 0 ? formatCurrency(row.preferenceAmount) : "None"}</td>
+                <td className="rounded-r-2xl px-3 py-3">
+                  {row.preferenceAmount > 0 ? formatCurrency(row.preferenceAmount) : "None"}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -55,20 +83,20 @@ function PositionTable({
   );
 }
 
-function WaterfallCard({
+function WaterfallSection({
   title,
   scenarios,
 }: {
   title: string;
-  scenarios: ReturnType<typeof summarizeCapTableWaterfall>["currentWaterfalls"];
+  scenarios: WaterfallRows;
 }) {
   return (
-    <Card className="min-w-0 overflow-hidden">
-      <h3 className="font-heading text-lg font-semibold">{title}</h3>
-      <div className="mt-4 space-y-3">
+    <Card>
+      <h3 className="font-heading text-xl font-semibold">{title}</h3>
+      <div className="mt-4 space-y-4">
         {scenarios.map((scenario) => (
-          <div key={scenario.label} className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div key={`${title}-${scenario.label}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-slate-900">{scenario.label}</p>
                 <p className="mt-1 text-sm text-slate-500">Exit value {formatCurrency(scenario.exitValue)}</p>
@@ -77,112 +105,92 @@ function WaterfallCard({
                 {scenario.preferredStructure}
               </div>
             </div>
-            <dl className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
-                <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Founder common</dt>
-                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
-                  {formatCurrency(scenario.founderProceeds)}
-                </dd>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                label="Founder common"
+                value={formatCurrency(scenario.founderProceeds)}
+                detail="Common proceeds paid to founders at exit, excluding any pre-exit secondary sales."
+              />
+              <MetricCard
+                label="Employee net"
+                value={formatCurrency(scenario.employeeProceeds)}
+                detail="Net employee proceeds after exercise cost is deducted from gross common value."
+              />
+              <MetricCard
+                label="Modeled investor"
+                value={formatCurrency(scenario.investorProceeds)}
+                detail="Total proceeds for the modeled investor. SAFE and note claims are included here, not additive."
+              />
+              <MetricCard
+                label="Prior investors"
+                value={formatCurrency(scenario.priorInvestorProceeds)}
+                detail="Total proceeds paid to the prior preferred stack ahead of founder common."
+              />
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl bg-white px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Reconciliation</p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                  <li className="flex items-center justify-between gap-4">
+                    <span>Exit value</span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(scenario.exitValue)}</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-4">
+                    <span>Allocated in waterfall</span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(scenario.exitAllocated)}</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-4">
+                    <span>Difference</span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(scenario.exitGap)}</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-4">
+                    <span>Employee strike cost</span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(scenario.employeeExerciseCost)}</span>
+                  </li>
+                </ul>
               </div>
-              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
-                <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Employee gross</dt>
-                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
-                  {formatCurrency(scenario.employeeGrossProceeds)}
-                </dd>
-              </div>
-              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
-                <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Modeled investor total</dt>
-                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
-                  {formatCurrency(scenario.investorProceeds)}
-                </dd>
-              </div>
-              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
-                <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Prior investor total</dt>
-                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
-                  {formatCurrency(scenario.priorInvestorProceeds)}
-                </dd>
-              </div>
-              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
-                <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Secondary common</dt>
-                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
-                  {formatCurrency(scenario.secondaryCommonProceeds)}
-                </dd>
-              </div>
-              <div className="min-w-0 overflow-hidden rounded-2xl bg-white px-3 py-3">
-                <dt className="text-xs uppercase tracking-[0.16em] text-slate-500">Employee net after strike</dt>
-                <dd className="mt-2 min-w-0 font-heading text-[clamp(1.35rem,1.9vw,2rem)] font-semibold leading-[0.95] tracking-tight text-slate-900 [overflow-wrap:anywhere]">
-                  {formatCurrency(scenario.employeeProceeds)}
-                </dd>
-              </div>
-            </dl>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
+
+              <div className="rounded-2xl bg-white px-4 py-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Modeled investor detail</p>
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
                   <li className="flex items-center justify-between gap-4">
-                    <span className="min-w-0">Preferred and common stack</span>
-                    <span className="shrink-0 font-semibold text-slate-900">
-                      {formatCurrency(scenario.modeledPreferredProceeds)}
-                    </span>
+                    <span>Preferred and common stack</span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(scenario.modeledPreferredProceeds)}</span>
                   </li>
                   <li className="flex items-center justify-between gap-4">
-                    <span className="min-w-0">Note claim included above</span>
-                    <span className="shrink-0 font-semibold text-slate-900">{formatCurrency(scenario.noteProceeds)}</span>
+                    <span>Note claim included above</span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(scenario.noteProceeds)}</span>
                   </li>
                   <li className="flex items-center justify-between gap-4">
-                    <span className="min-w-0">SAFE claim included above</span>
-                    <span className="shrink-0 font-semibold text-slate-900">{formatCurrency(scenario.safeProceeds)}</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="min-w-0 rounded-2xl bg-white px-3 py-3">
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Exit reconciliation</p>
-                <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                  <li className="flex items-center justify-between gap-4">
-                    <span className="min-w-0">Exit value</span>
-                    <span className="shrink-0 font-semibold text-slate-900">{formatCurrency(scenario.exitValue)}</span>
+                    <span>SAFE claim included above</span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(scenario.safeProceeds)}</span>
                   </li>
                   <li className="flex items-center justify-between gap-4">
-                    <span className="min-w-0">Allocated in waterfall</span>
-                    <span className="shrink-0 font-semibold text-slate-900">
-                      {formatCurrency(scenario.exitAllocated)}
-                    </span>
+                    <span>Secondary common</span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(scenario.secondaryCommonProceeds)}</span>
                   </li>
-                  <li className="flex items-center justify-between gap-4">
-                    <span className="min-w-0">Difference</span>
-                    <span className="shrink-0 font-semibold text-slate-900">{formatCurrency(scenario.exitGap)}</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-4">
-                    <span className="min-w-0">Employee strike cost</span>
-                    <span className="shrink-0 font-semibold text-slate-900">
-                      {formatCurrency(scenario.employeeExerciseCost)}
-                    </span>
-                  </li>
-                  {scenario.founderRealizedSecondary > 0 || scenario.employeeRealizedSecondary > 0 ? (
-                    <li className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-slate-700">
-                      Realized secondary sold before exit is excluded from the exit-value reconciliation.
-                    </li>
-                  ) : null}
                 </ul>
               </div>
             </div>
+
             {scenario.founderBreakdown.length > 1 ? (
-              <div className="mt-4 min-w-0 rounded-2xl bg-white px-3 py-3">
+              <div className="mt-4 rounded-2xl bg-white px-4 py-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Founder split</p>
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
                   {scenario.founderBreakdown.map((founder) => (
                     <li key={founder.id} className="flex items-center justify-between gap-4">
-                      <span className="min-w-0">{founder.name}</span>
-                      <span className="shrink-0 text-right font-semibold text-slate-900">
-                        {formatCurrency(founder.proceeds)}
-                      </span>
+                      <span>{founder.name}</span>
+                      <span className="font-semibold text-slate-900">{formatCurrency(founder.proceeds)}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             ) : null}
+
             {scenario.seriesBreakdown.length > 0 ? (
-              <div className="mt-4 min-w-0 rounded-2xl bg-white px-3 py-3">
+              <div className="mt-4 rounded-2xl bg-white px-4 py-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Preferred series</p>
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
                   {scenario.seriesBreakdown.map((series) => (
@@ -193,7 +201,7 @@ function WaterfallCard({
                           {series.structure} / seniority {series.seniority}
                         </p>
                       </div>
-                      <span className="shrink-0 text-right font-semibold text-slate-900">{formatCurrency(series.payout)}</span>
+                      <span className="shrink-0 font-semibold text-slate-900">{formatCurrency(series.payout)}</span>
                     </li>
                   ))}
                 </ul>
@@ -206,20 +214,130 @@ function WaterfallCard({
   );
 }
 
+function ConversionBridge({ summary }: { summary: CapTableSummary }) {
+  if (summary.safeConversionBridge) {
+    const bridge = summary.safeConversionBridge;
+    return (
+      <Card>
+        <h3 className="font-heading text-xl font-semibold">Post-money SAFE dilution bridge</h3>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          The SAFE preview converts at the better of the post-money cap or the qualified round price. Dilution lands on existing holders before the new priced round buys in.
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-700">
+            <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Conversion math</p>
+            <ul className="mt-3 space-y-2">
+              <li className="flex items-center justify-between gap-4">
+                <span>Qualified financing pre-money</span>
+                <span className="font-semibold text-slate-900">{formatCurrency(bridge.qualifiedPreMoney)}</span>
+              </li>
+              <li className="flex items-center justify-between gap-4">
+                <span>SAFE issued shares</span>
+                <span className="font-semibold text-slate-900">{formatCompactNumber(bridge.issuedShares)}</span>
+              </li>
+              <li className="flex items-center justify-between gap-4">
+                <span>Cap-based shares</span>
+                <span className="font-semibold text-slate-900">{formatCompactNumber(bridge.capIssuedShares)}</span>
+              </li>
+              <li className="flex items-center justify-between gap-4">
+                <span>Round-price shares</span>
+                <span className="font-semibold text-slate-900">{formatCompactNumber(bridge.roundIssuedShares)}</span>
+              </li>
+            </ul>
+          </div>
+          <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-700">
+            <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Ownership movement</p>
+            <ul className="mt-3 space-y-2">
+              <li className="flex items-center justify-between gap-4">
+                <span>Founders</span>
+                <span className="font-semibold text-slate-900">
+                  {formatPercent(bridge.founderBefore)} to {formatPercent(bridge.founderAfter)}
+                </span>
+              </li>
+              <li className="flex items-center justify-between gap-4">
+                <span>Employees</span>
+                <span className="font-semibold text-slate-900">
+                  {formatPercent(bridge.employeeBefore)} to {formatPercent(bridge.employeeAfter)}
+                </span>
+              </li>
+              <li className="flex items-center justify-between gap-4">
+                <span>Prior investors</span>
+                <span className="font-semibold text-slate-900">
+                  {formatPercent(bridge.priorBefore)} to {formatPercent(bridge.priorAfter)}
+                </span>
+              </li>
+              <li className="flex items-center justify-between gap-4">
+                <span>SAFE ownership after conversion</span>
+                <span className="font-semibold text-slate-900">{formatPercent(bridge.safeOwnershipAfter)}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (summary.noteConversionBridge) {
+    const bridge = summary.noteConversionBridge;
+    return (
+      <Card>
+        <h3 className="font-heading text-xl font-semibold">Convertible note bridge</h3>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          Notes stay senior in weak exits, then convert at the better of the cap or discount in the qualified-financing preview.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <MetricCard
+            label="Qualified financing pre-money"
+            value={formatCurrency(bridge.qualifiedPreMoney)}
+            detail="The round price the note compares itself against."
+          />
+          <MetricCard
+            label="Accrued principal"
+            value={formatCurrency(bridge.accruedPrincipal)}
+            detail="Principal plus modeled accrued interest at preview conversion."
+          />
+          <MetricCard
+            label="Conversion price"
+            value={formatCurrency(bridge.conversionPrice)}
+            detail={`Conversion is currently driven by the ${bridge.conversionDriver}.`}
+          />
+        </div>
+      </Card>
+    );
+  }
+
+  return null;
+}
+
 export function CapTableWaterfallWorkspace() {
   const active = useScenarioStore((state) => state.active);
   const setActivePreset = useScenarioStore((state) => state.setActivePreset);
-  const capTableState = useMemo(() => {
+
+  const pageState = useMemo(() => {
     try {
+      const diagnostics = analyzeScenario(active);
+      const financing = getCurrentFinancing(active);
+      const summary = summarizeCapTableWaterfall(active);
+      const currentPreferredOverhang = summary.currentRows
+        .filter((row) => row.preferenceAmount > 0)
+        .reduce((total, row) => total + row.preferenceAmount, 0);
+      const convertedShareDelta = summary.convertedFullyDilutedShares - summary.fullyDilutedShares;
+
       return {
-        summary: summarizeCapTableWaterfall(active),
-        deterministic: summarizeDeterministicFinance(active),
+        diagnostics,
+        financing,
+        summary,
+        currentPreferredOverhang,
+        convertedShareDelta,
         error: null as string | null,
       };
     } catch (error) {
       return {
+        diagnostics: null,
+        financing: null,
         summary: null,
-        deterministic: null,
+        currentPreferredOverhang: 0,
+        convertedShareDelta: 0,
         error:
           error instanceof Error
             ? error.message
@@ -228,17 +346,16 @@ export function CapTableWaterfallWorkspace() {
     }
   }, [active]);
 
-  if (!capTableState.summary || !capTableState.deterministic) {
+  if (!pageState.summary || !pageState.diagnostics || !pageState.financing) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Card>
           <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Cap table and waterfall output</p>
           <h2 className="mt-2 font-heading text-2xl font-semibold">This scenario could not render in the cap-table engine</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-            The active scenario hit a client-side exception before the cap-table view could finish rendering. Reset to
-            the standard preset or return to the calculator and reopen the page from there.
+            The cap-table page has been simplified, but the active scenario still hit a browser-side exception before this route could finish rendering. Reset to the standard scenario and reopen the page.
           </p>
-          <p className="mt-3 text-sm text-slate-500">{capTableState.error}</p>
+          <p className="mt-3 text-sm text-slate-500">{pageState.error}</p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Button onClick={() => setActivePreset("nvca_standard")}>Reset to standard scenario</Button>
             <Link
@@ -253,17 +370,45 @@ export function CapTableWaterfallWorkspace() {
     );
   }
 
-  const { summary, deterministic } = capTableState;
+  const { diagnostics, financing, summary, currentPreferredOverhang, convertedShareDelta } = pageState;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="space-y-6">
         <Card>
-          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Cap table and waterfall output</p>
-          <h2 className="mt-2 font-heading text-2xl font-semibold">See who gets paid before you touch the legal details</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-            This page now leads with the ownership and exit consequences. Open the full scenario controls only when you want to change the instrument, stack, or operating assumptions behind the cap table.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Cap table and waterfall output</p>
+              <h2 className="mt-2 font-heading text-3xl font-semibold">Who owns the company now, and who gets paid at exit?</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                This page is now deliberately narrower. It focuses on current ownership, as-converted ownership, conversion bridges, and exit proceeds. The full scenario editor is available below, but it is no longer the first thing you have to parse.
+              </p>
+            </div>
+            <SupportBadge level={diagnostics.supportLevel} label={diagnostics.supportLabel} />
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="Reference post-money"
+              value={formatCurrency(financing.referencePostMoney)}
+              detail="This anchors the cap-table exit scenarios shown below."
+            />
+            <MetricCard
+              label="Current instrument"
+              value={replaceAllText(active.currentRoundKind, "_", " ")}
+              detail="The instrument type driving the current ownership and conversion preview."
+            />
+            <MetricCard
+              label="Current preference overhang"
+              value={formatCurrency(currentPreferredOverhang)}
+              detail="Preference stack sitting ahead of common in modest exits."
+            />
+            <MetricCard
+              label="As-converted share delta"
+              value={formatCompactNumber(convertedShareDelta)}
+              detail="Extra fully diluted shares created when current unpriced instruments convert."
+            />
+          </div>
         </Card>
 
         <div className="grid gap-4 2xl:grid-cols-2">
@@ -275,111 +420,18 @@ export function CapTableWaterfallWorkspace() {
           />
         </div>
 
-        <CapTableEvolutionSlider ownershipSeries={deterministic.ownershipSeries} roundProjection={deterministic.roundProjection} />
+        <ConversionBridge summary={summary} />
 
-          {summary.safeConversionBridge ? (
-            <Card>
-              <h3 className="font-heading text-lg font-semibold">Post-money SAFE dilution bridge</h3>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                The SAFE preview converts at the better of the post-money cap or the qualified round price. The dilution
-                falls on the existing holders before the new priced-round investor buys in.
-              </p>
-              <div className="mt-4 grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
-                <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-700">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Conversion mechanics</p>
-                  <ul className="mt-3 space-y-2">
-                    <li className="flex items-center justify-between gap-4">
-                      <span>Qualified financing pre-money</span>
-                      <span className="font-semibold text-slate-900">{formatCurrency(summary.safeConversionBridge.qualifiedPreMoney)}</span>
-                    </li>
-                    <li className="flex items-center justify-between gap-4">
-                      <span>SAFE issued shares</span>
-                      <span className="font-semibold text-slate-900">{formatCompactNumber(summary.safeConversionBridge.issuedShares)}</span>
-                    </li>
-                    <li className="flex items-center justify-between gap-4">
-                      <span>Cap-based shares</span>
-                      <span className="font-semibold text-slate-900">{formatCompactNumber(summary.safeConversionBridge.capIssuedShares)}</span>
-                    </li>
-                    <li className="flex items-center justify-between gap-4">
-                      <span>Round-price shares</span>
-                      <span className="font-semibold text-slate-900">{formatCompactNumber(summary.safeConversionBridge.roundIssuedShares)}</span>
-                    </li>
-                    <li className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-slate-700">
-                      SAFE conversion is currently driven by the{" "}
-                      <span className="font-semibold text-slate-900">
-                        {summary.safeConversionBridge.conversionDriver === "cap" ? "post-money cap" : "priced round"}
-                      </span>
-                      .
-                    </li>
-                  </ul>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-700">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Dilution lands on existing holders</p>
-                  <ul className="mt-3 space-y-2">
-                    <li className="flex items-center justify-between gap-4">
-                      <span>Founders</span>
-                      <span className="font-semibold text-slate-900">
-                        {formatPercent(summary.safeConversionBridge.founderBefore)} to {formatPercent(summary.safeConversionBridge.founderAfter)}
-                      </span>
-                    </li>
-                    <li className="flex items-center justify-between gap-4">
-                      <span>Employees</span>
-                      <span className="font-semibold text-slate-900">
-                        {formatPercent(summary.safeConversionBridge.employeeBefore)} to {formatPercent(summary.safeConversionBridge.employeeAfter)}
-                      </span>
-                    </li>
-                    <li className="flex items-center justify-between gap-4">
-                      <span>Prior investors</span>
-                      <span className="font-semibold text-slate-900">
-                        {formatPercent(summary.safeConversionBridge.priorBefore)} to {formatPercent(summary.safeConversionBridge.priorAfter)}
-                      </span>
-                    </li>
-                    <li className="flex items-center justify-between gap-4">
-                      <span>SAFE ownership after conversion</span>
-                      <span className="font-semibold text-slate-900">{formatPercent(summary.safeConversionBridge.safeOwnershipAfter)}</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </Card>
-          ) : null}
-
-          {summary.noteConversionBridge ? (
-            <Card>
-              <h3 className="font-heading text-lg font-semibold">Note conversion bridge</h3>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                The note preview accrues interest, stays senior to equity in weak exits, and converts at the better of the cap or discount.
-              </p>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Qualified financing pre-money</p>
-                  <p className="mt-2 font-semibold text-slate-900">{formatCurrency(summary.noteConversionBridge.qualifiedPreMoney)}</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Accrued principal</p>
-                  <p className="mt-2 font-semibold text-slate-900">{formatCurrency(summary.noteConversionBridge.accruedPrincipal)}</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Winning conversion rule</p>
-                  <p className="mt-2 font-semibold text-slate-900">{summary.noteConversionBridge.conversionDriver}</p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Share price {formatCurrency(summary.noteConversionBridge.conversionPrice)}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          ) : null}
-
-        <div className="grid gap-4 2xl:grid-cols-2">
-          <WaterfallCard title="Current stack exit scenarios" scenarios={summary.currentWaterfalls} />
-          <WaterfallCard title="As-converted exit scenarios" scenarios={summary.convertedWaterfalls} />
+        <div className="grid gap-6 2xl:grid-cols-2">
+          <WaterfallSection title="Current stack exit scenarios" scenarios={summary.currentWaterfalls} />
+          <WaterfallSection title="As-converted exit scenarios" scenarios={summary.convertedWaterfalls} />
         </div>
 
         <Card>
-          <h3 className="font-heading text-lg font-semibold">Interpretation flags</h3>
+          <h3 className="font-heading text-xl font-semibold">Interpretation notes</h3>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
             {summary.warnings.map((warning) => (
-              <li key={warning} className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <li key={warning} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 {warning}
               </li>
             ))}
@@ -387,12 +439,12 @@ export function CapTableWaterfallWorkspace() {
         </Card>
 
         <ActiveScenarioPanel
+          modeLabel="Cap-table controls"
+          title="Adjust the financing setup behind the ownership stack"
+          guidanceTitle="Cap-table interpretation"
+          guidanceBody="Use the page above to read the ownership stack first. Only open the full controls when you want to change the deal terms or assumptions behind the stack."
+          hintWhenReady="Start from the current and as-converted tables, then read the exit scenarios below them."
           defaultCollapsed
-          modeLabel="Cap table and waterfall engine"
-          title="Cap Table Lab"
-          guidanceTitle="Use the payout view first"
-          guidanceBody="Founders and investors should react to who gets diluted and who gets paid before they wade into the full scenario editor. Open the controls when you want to change the stack."
-          hintWhenReady={`Current fully diluted base ${formatCompactNumber(summary.fullyDilutedShares)} shares.`}
         />
       </div>
     </div>
