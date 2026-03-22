@@ -187,23 +187,28 @@ export function getFullyDilutedShares(snapshot: CapTableSnapshot) {
 }
 
 export function getFounderOwnership(snapshot: CapTableSnapshot) {
-  return snapshot.founderCommon / getFullyDilutedShares(snapshot);
+  const total = getFullyDilutedShares(snapshot);
+  return total > 0 ? snapshot.founderCommon / total : 0;
 }
 
 export function getEmployeeOwnership(snapshot: CapTableSnapshot) {
-  return snapshot.employeeCommon / getFullyDilutedShares(snapshot);
+  const total = getFullyDilutedShares(snapshot);
+  return total > 0 ? snapshot.employeeCommon / total : 0;
 }
 
 export function getInvestorOwnership(snapshot: CapTableSnapshot) {
-  return getPreferredShares(snapshot, "modeled") / getFullyDilutedShares(snapshot);
+  const total = getFullyDilutedShares(snapshot);
+  return total > 0 ? getPreferredShares(snapshot, "modeled") / total : 0;
 }
 
 export function getPriorInvestorOwnership(snapshot: CapTableSnapshot) {
-  return getPreferredShares(snapshot, "prior") / getFullyDilutedShares(snapshot);
+  const total = getFullyDilutedShares(snapshot);
+  return total > 0 ? getPreferredShares(snapshot, "prior") / total : 0;
 }
 
 export function getPoolOwnership(snapshot: CapTableSnapshot) {
-  return snapshot.employeePool / getFullyDilutedShares(snapshot);
+  const total = getFullyDilutedShares(snapshot);
+  return total > 0 ? snapshot.employeePool / total : 0;
 }
 
 export function createOwnershipPoint(label: string, snapshot: CapTableSnapshot): OwnershipPoint {

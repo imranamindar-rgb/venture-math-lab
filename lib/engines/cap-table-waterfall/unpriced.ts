@@ -93,11 +93,11 @@ export function maybeConvertNote(
   );
 
   const fullyDilutedShares = getFullyDilutedShares(snapshot);
-  const roundPricePerShare = roundCurrency(qualifiedPreMoney / fullyDilutedShares);
-  const capPricePerShare = roundCurrency(config.note.preMoneyCap / fullyDilutedShares);
+  const roundPricePerShare = fullyDilutedShares > 0 ? roundCurrency(qualifiedPreMoney / fullyDilutedShares) : 0;
+  const capPricePerShare = fullyDilutedShares > 0 ? roundCurrency(config.note.preMoneyCap / fullyDilutedShares) : 0;
   const discountPricePerShare = roundCurrency(roundPricePerShare * (1 - config.note.discountRate));
   const conversionPrice = roundCurrency(Math.min(capPricePerShare, discountPricePerShare));
-  const issuedShares = roundShares(accruedPrincipal / conversionPrice);
+  const issuedShares = conversionPrice > 0 ? roundShares(accruedPrincipal / conversionPrice) : 0;
 
   addPreferredSeries(snapshot, {
     id: `note-${snapshot.preferredSeries.length + 1}`,

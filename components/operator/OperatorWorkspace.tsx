@@ -6,7 +6,7 @@ import { ActiveScenarioPanel } from "@/components/workspace/ActiveScenarioPanel"
 import { Card } from "@/components/ui/Card";
 import { ProbabilityChart } from "@/components/charts/ProbabilityChart";
 import { summarizeOperatorIntelligence } from "@/lib/engines/operator-intelligence";
-import { formatCurrency, formatMultiple } from "@/lib/format";
+import { formatCurrency, formatMultiple, safeFixed } from "@/lib/format";
 import { useScenarioStore } from "@/lib/state/scenario-store";
 
 export function OperatorWorkspace() {
@@ -28,14 +28,14 @@ export function OperatorWorkspace() {
           <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Runway</p>
               <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
-                {summary.runwayMonths.toFixed(1)} months
+                {safeFixed(summary.runwayMonths, 1)} months
               </p>
               <p className="mt-2 text-sm text-slate-600">{summary.runwayBand} coverage versus the next benchmark financing step</p>
             </Card>
             <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Post-close runway</p>
               <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
-                {summary.postRaiseRunwayMonths.toFixed(1)} months
+                {safeFixed(summary.postRaiseRunwayMonths, 1)} months
               </p>
               <p className="mt-2 text-sm text-slate-600">Runway if the modeled financing closes net of transaction fees</p>
             </Card>
@@ -154,7 +154,7 @@ export function OperatorWorkspace() {
             <Card className="min-w-0 overflow-hidden p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Quick ratio</p>
               <p className="mt-3 min-w-0 font-heading text-[clamp(1.9rem,2.5vw,3rem)] font-semibold leading-[0.92] tracking-tight [overflow-wrap:anywhere]">
-                {summary.quickRatio.toFixed(2)}x
+                {safeFixed(summary.quickRatio, 2)}x
               </p>
               <p className="mt-2 text-sm text-slate-600">Liquid assets versus short-term obligations</p>
             </Card>

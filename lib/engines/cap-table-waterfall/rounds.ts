@@ -130,8 +130,8 @@ export function issuePreferredRound(
 ) {
   const financing = getCurrentFinancing(config);
   const preRoundShares = getFullyDilutedShares(snapshot);
-  const pricePerShare = roundCurrency(preMoney / preRoundShares);
-  const issuedShares = roundShares(roundSize / pricePerShare);
+  const pricePerShare = preRoundShares > 0 ? roundCurrency(preMoney / preRoundShares) : 0;
+  const issuedShares = pricePerShare > 0 ? roundShares(roundSize / pricePerShare) : 0;
   const antiDilution = applyAntiDilution(snapshot, preRoundShares, pricePerShare, issuedShares, roundSize);
 
   const investorExistingPct = getInvestorOwnership(snapshot);
@@ -144,7 +144,7 @@ export function issuePreferredRound(
   );
 
   const actualFollowOnCash = Math.min(targetFollowOnCash, reserveRemaining);
-  const actualFollowOnShares = roundShares(actualFollowOnCash / pricePerShare);
+  const actualFollowOnShares = pricePerShare > 0 ? roundShares(actualFollowOnCash / pricePerShare) : 0;
   const seniority = seniorityOverride ?? getNextPreferredSeniority(snapshot);
 
   if (actualFollowOnShares > 0) {

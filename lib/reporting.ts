@@ -2,7 +2,7 @@ import { summarizeCapTableWaterfall } from "@/lib/engines/cap-table-waterfall/an
 import { buildDeterministicExitCurve, summarizeDeterministicFinance } from "@/lib/engines/deterministic-finance";
 import { summarizeOperatorIntelligence } from "@/lib/engines/operator-intelligence";
 import { runMonteCarlo } from "@/lib/engines/monte-carlo";
-import { formatCurrency, formatMultiple, formatPercent } from "@/lib/format";
+import { formatCurrency, formatMultiple, formatPercent, safeFixed } from "@/lib/format";
 import { getCurrentFinancing } from "@/lib/current-financing";
 import { analyzeScenario } from "@/lib/scenario-diagnostics";
 import { ScenarioConfig, SimulationSummary } from "@/lib/sim/types";
@@ -91,7 +91,7 @@ export function buildScenarioBasePayload(config: ScenarioConfig): ScenarioReport
     topWarnings,
     executiveSummary: [
       `${config.name} currently models ${preferredSeriesCount} preferred series with ${diagnostics.supportLabel.toLowerCase()} support.`,
-      `Operator coverage is ${operator.runwayMonths.toFixed(1)} months pre-close and ${operator.postRaiseRunwayMonths.toFixed(1)} months post-close, with net financing proceeds of ${formatCurrency(operator.netFinancingProceeds)}.`,
+      `Operator coverage is ${safeFixed(operator.runwayMonths, 1)} months pre-close and ${safeFixed(operator.postRaiseRunwayMonths, 1)} months post-close, with net financing proceeds of ${formatCurrency(operator.netFinancingProceeds)}.`,
       `Current investor ownership is ${formatPercent(deterministic.currentInvestorOwnership)} and the deterministic return-the-fund exit is ${formatCurrency(deterministic.returnTheFundExit)}.`,
       topWarnings[0] ?? "No material interpretation flags were generated for the active scenario.",
     ],
@@ -161,9 +161,9 @@ export function buildComparisonPayload(
     },
     {
       label: "Post-close runway",
-      baseline: `${baseline.operator.postRaiseRunwayMonths.toFixed(1)} months`,
-      comparison: `${comparison.operator.postRaiseRunwayMonths.toFixed(1)} months`,
-      delta: `${(comparison.operator.postRaiseRunwayMonths - baseline.operator.postRaiseRunwayMonths).toFixed(1)} months`,
+      baseline: `${safeFixed(baseline.operator.postRaiseRunwayMonths, 1)} months`,
+      comparison: `${safeFixed(comparison.operator.postRaiseRunwayMonths, 1)} months`,
+      delta: `${safeFixed(comparison.operator.postRaiseRunwayMonths - baseline.operator.postRaiseRunwayMonths, 1)} months`,
       interpretation: "This links the financing assumption to actual survival time rather than only dilution math.",
     },
   ];
@@ -232,7 +232,7 @@ export function buildComparisonPayload(
   const boardNotes = [
     `Baseline support is ${baseline.diagnostics.supportLabel.toLowerCase()} and comparison support is ${comparison.diagnostics.supportLabel.toLowerCase()}.`,
     `The preferred stack changes from ${baseline.capTable.currentRows.filter((row) => row.category === "preferred").length} series to ${comparison.capTable.currentRows.filter((row) => row.category === "preferred").length} series.`,
-    `Post-close runway changes from ${baseline.operator.postRaiseRunwayMonths.toFixed(1)} to ${comparison.operator.postRaiseRunwayMonths.toFixed(1)} months.`,
+    `Post-close runway changes from ${safeFixed(baseline.operator.postRaiseRunwayMonths, 1)} to ${safeFixed(comparison.operator.postRaiseRunwayMonths, 1)} months.`,
     "Compare cards show structured deltas across deterministic, stochastic, cap-table, and operator engines. They are directional attribution, not a causal decomposition proof.",
   ];
 

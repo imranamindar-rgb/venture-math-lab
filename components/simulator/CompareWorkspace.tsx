@@ -11,7 +11,7 @@ import { TermSheetComparatorChart } from "@/components/charts/TermSheetComparato
 import { analyzeScenario } from "@/lib/scenario-diagnostics";
 import { getCurrentFinancing } from "@/lib/current-financing";
 import { buildComparisonCsv, buildComparisonMarkdown } from "@/lib/export";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { formatCurrency, formatPercent, safeFixed } from "@/lib/format";
 import { replaceAllText } from "@/lib/compat";
 import { buildComparisonPayload } from "@/lib/reporting";
 
@@ -326,12 +326,11 @@ export function CompareWorkspace() {
                       },
                       {
                         label: "Post-close runway",
-                        baseline: `${(comparePayload?.baseline.operator.postRaiseRunwayMonths ?? 0).toFixed(1)} months`,
-                        comparison: `${(comparePayload?.comparison.operator.postRaiseRunwayMonths ?? 0).toFixed(1)} months`,
-                        delta: `${(
+                        baseline: `${safeFixed(comparePayload?.baseline.operator.postRaiseRunwayMonths ?? 0, 1)} months`,
+                        comparison: `${safeFixed(comparePayload?.comparison.operator.postRaiseRunwayMonths ?? 0, 1)} months`,
+                        delta: `${safeFixed(
                           (comparePayload?.comparison.operator.postRaiseRunwayMonths ?? 0) -
-                          (comparePayload?.baseline.operator.postRaiseRunwayMonths ?? 0)
-                        ).toFixed(1)} months`,
+                          (comparePayload?.baseline.operator.postRaiseRunwayMonths ?? 0), 1)} months`,
                         note: "Headline financing only matters if it actually buys survival time.",
                       },
                       {

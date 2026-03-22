@@ -1,5 +1,5 @@
 import { replaceAllText } from "@/lib/compat";
-import { formatCurrency, formatPercent, formatMultiple } from "@/lib/format";
+import { formatCurrency, formatPercent, formatMultiple, safeFixed } from "@/lib/format";
 import { ScenarioConfig, SimulationSummary } from "@/lib/sim/types";
 import { buildComparisonPayload, buildScenarioReportPayload } from "@/lib/reporting";
 
@@ -91,13 +91,13 @@ export function buildScenarioCsv(config: ScenarioConfig, provided?: SimulationSu
       "Batch-estimated Monte Carlo stability interval",
     ],
     ...payload.simulation.outcomeMix.map((metric) => ["Outcome mix", metric.label, formatPercent(metric.probability), ""]),
-    ["Operator", "Runway months", payload.operator.runwayMonths.toFixed(1), ""],
-    ["Operator", "Post-close runway", payload.operator.postRaiseRunwayMonths.toFixed(1), ""],
+    ["Operator", "Runway months", safeFixed(payload.operator.runwayMonths, 1), ""],
+    ["Operator", "Post-close runway", safeFixed(payload.operator.postRaiseRunwayMonths, 1), ""],
     ["Operator", "Financing gap", formatCurrency(payload.operator.financingGap), ""],
     ["Operator", "Buffered gap", formatCurrency(payload.operator.bufferGap), ""],
     ["Operator", "Burn multiple", formatMultiple(payload.operator.burnMultiple), ""],
     ["Operator", "Working capital", formatCurrency(payload.operator.workingCapital), ""],
-    ["Operator", "Quick ratio", `${payload.operator.quickRatio.toFixed(2)}x`, ""],
+    ["Operator", "Quick ratio", `${safeFixed(payload.operator.quickRatio, 2)}x`, ""],
     ...payload.capTable.currentRows.map((row) => [
       "Cap table",
       row.label,
@@ -154,8 +154,8 @@ export function buildScenarioMarkdown(config: ScenarioConfig, provided?: Simulat
     `- Power-law spread: ${formatMultiple(payload.simulation.meanVsMedianSpread)}`,
     "",
     "## Operator Reality",
-    `- Runway: ${payload.operator.runwayMonths.toFixed(1)} months`,
-    `- Post-close runway: ${payload.operator.postRaiseRunwayMonths.toFixed(1)} months`,
+    `- Runway: ${safeFixed(payload.operator.runwayMonths, 1)} months`,
+    `- Post-close runway: ${safeFixed(payload.operator.postRaiseRunwayMonths, 1)} months`,
     `- Working capital: ${formatCurrency(payload.operator.workingCapital)}`,
     `- Net financing proceeds: ${formatCurrency(payload.operator.netFinancingProceeds)}`,
     "",

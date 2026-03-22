@@ -426,7 +426,7 @@ export function ReportWorkspace() {
             <dl className="mt-4 space-y-3 text-sm text-slate-700">
               <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
                 <dt>Runway months</dt>
-                <dd className="font-semibold">{operator.runwayMonths.toFixed(1)}</dd>
+                <dd className="font-semibold">{Number.isFinite(operator.runwayMonths) ? operator.runwayMonths.toFixed(1) : "∞"}</dd>
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
                 <dt>Months to next benchmark round</dt>
@@ -446,7 +446,7 @@ export function ReportWorkspace() {
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
                 <dt>Post-close runway</dt>
-                <dd className="font-semibold">{operator.postRaiseRunwayMonths.toFixed(1)} months</dd>
+                <dd className="font-semibold">{Number.isFinite(operator.postRaiseRunwayMonths) ? operator.postRaiseRunwayMonths.toFixed(1) : "∞"} months</dd>
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
                 <dt>Working capital</dt>

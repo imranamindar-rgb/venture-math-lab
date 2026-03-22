@@ -1,3 +1,10 @@
+export function safeFixed(value: number, digits: number) {
+  if (!Number.isFinite(value)) {
+    return value !== value ? "—" : "∞";
+  }
+  return value.toFixed(digits);
+}
+
 function tryCompactNumberFormat(
   value: number,
   options: Intl.NumberFormatOptions,
@@ -56,6 +63,9 @@ export function formatCompactCurrency(value: number) {
 }
 
 export function formatCurrency(value: number) {
+  if (!Number.isFinite(value)) {
+    return value !== value ? "$—" : value > 0 ? "$∞" : "-$∞";
+  }
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -93,6 +103,9 @@ export function formatMoneyScaleHint(value: number) {
 }
 
 export function formatPercent(value: number, maximumFractionDigits = 1) {
+  if (!Number.isFinite(value)) {
+    return value !== value ? "—%" : value > 0 ? "∞%" : "-∞%";
+  }
   return new Intl.NumberFormat("en-US", {
     style: "percent",
     maximumFractionDigits,
@@ -100,10 +113,16 @@ export function formatPercent(value: number, maximumFractionDigits = 1) {
 }
 
 export function formatMultiple(value: number) {
+  if (!Number.isFinite(value)) {
+    return value !== value ? "—x" : value > 0 ? "∞x" : "-∞x";
+  }
   return `${value.toFixed(value >= 10 ? 1 : 2)}x`;
 }
 
 export function formatCompactNumber(value: number) {
+  if (!Number.isFinite(value)) {
+    return value !== value ? "—" : value > 0 ? "∞" : "-∞";
+  }
   return (
     tryCompactNumberFormat(value, {
       maximumFractionDigits: 1,
