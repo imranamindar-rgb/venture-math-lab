@@ -2,19 +2,7 @@ import { ScenarioConfig, scenarioFileSchema } from "@/lib/sim/types";
 
 const SHARE_PARAM = "scenario";
 
-function hasNativeBase64Url() {
-  try {
-    return typeof Buffer !== "undefined" && Buffer.isEncoding("base64url");
-  } catch {
-    return false;
-  }
-}
-
 function encodeBase64Url(input: string) {
-  if (hasNativeBase64Url()) {
-    return Buffer.from(input, "utf8").toString("base64url");
-  }
-
   const bytes = new TextEncoder().encode(input);
   let binary = "";
   bytes.forEach((byte) => {
@@ -25,10 +13,6 @@ function encodeBase64Url(input: string) {
 }
 
 function decodeBase64Url(input: string) {
-  if (hasNativeBase64Url()) {
-    return Buffer.from(input, "base64url").toString("utf8");
-  }
-
   const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
   const padding = normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4));
   const binary = atob(`${normalized}${padding}`);
