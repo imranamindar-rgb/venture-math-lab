@@ -9,6 +9,7 @@ interface MoneyInputProps {
   onValueChange: (value: number) => void;
   className?: string;
   showScaleHint?: boolean;
+  min?: number;
 }
 
 function sanitizeMoneyInput(raw: string) {
@@ -43,8 +44,10 @@ export function MoneyInput({
   onValueChange,
   className = "w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm",
   showScaleHint = true,
+  min = 0,
 }: MoneyInputProps) {
   const [displayValue, setDisplayValue] = useState(formatNumberInput(value));
+  const hasError = Number.isFinite(min) && value < min;
 
   useEffect(() => {
     setDisplayValue(formatNumberInput(value));
@@ -65,10 +68,19 @@ export function MoneyInput({
     }
   }
 
+  const borderClass = hasError
+    ? className.replace("border-border", "border-red-400")
+    : className;
+
   return (
     <div className="space-y-2">
-      <input type="text" inputMode="decimal" value={displayValue} onChange={handleChange} className={className} />
-      {showScaleHint ? (
+      <div className="relative">
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">$</span>
+        <input type="text" inputMode="decimal" value={displayValue} onChange={handleChange} className={`${borderClass} pl-8`} />
+      </div>
+      {hasError ? (
+        <p className="text-xs leading-5 font-medium text-red-600" role="alert">Value must be at least {formatMoneyScaleHint(min)}</p>
+      ) : showScaleHint ? (
         <p className="text-xs leading-5 text-slate-500">Reads as {formatMoneyScaleHint(value)}</p>
       ) : null}
     </div>

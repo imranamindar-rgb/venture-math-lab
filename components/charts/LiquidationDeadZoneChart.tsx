@@ -64,7 +64,12 @@ export function LiquidationDeadZoneChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p className="mt-4 text-sm leading-6 text-slate-600">
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600">
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#7c2d12" }} />Founder net</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#0f766e" }} />Investor proceeds</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-5 rounded bg-amber-100" />Dead zone</span>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-600">
         The shaded region marks exits where the preferred stack still dominates the payout. Once the curve clears{" "}
         {formatCurrency(deadZoneEndsAt)}, common holders begin to participate more meaningfully.
       </p>

@@ -66,10 +66,49 @@ textarea:focus-visible,
 
 @media print {
   body {
-    background: white;
+    background: white !important;
+    color: #1f2937;
+    font-size: 11px;
   }
 
-  header {
-    display: none;
+  header,
+  nav[aria-label="Breadcrumb"],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  .print\:max-w-none {
+    max-width: none !important;
+  }
+
+  .print\:px-0 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .print\:mt-0 {
+    margin-top: 0 !important;
+  }
+
+  .rounded-panel,
+  .rounded-2xl {
+    border-radius: 8px !important;
+  }
+
+  table {
+    font-size: 10px;
+  }
+
+  @page {
+    margin: 1.5cm;
+    size: letter;
   }
 }

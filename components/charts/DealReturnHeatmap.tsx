@@ -97,7 +97,15 @@ export function DealReturnHeatmap({
           </tbody>
         </table>
       </div>
-      <p className="mt-4 text-sm leading-6 text-slate-600">
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+        <span className="font-semibold">IRR scale:</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-5 rounded bg-rose-100" />&lt; 0%</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-5 rounded bg-orange-100" />0 &ndash; 5%</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-5 rounded bg-amber-100" />5 &ndash; 15%</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-5 rounded bg-teal-100" />15 &ndash; 30%</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-5 rounded bg-emerald-100" />&gt; 30%</span>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-600">
         Cells move from loss-making to attractive as both exit magnitude and timing improve. This is the cleanest IC-style
         view of how entry price and time interact before path uncertainty is layered on.
       </p>

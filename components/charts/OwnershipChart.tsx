@@ -30,12 +30,18 @@ export function OwnershipChart({ data }: { data: OwnershipPoint[] }) {
           <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} height={40} tickMargin={10} />
           <YAxis tickLine={false} axisLine={false} width={40} tickFormatter={(value) => `${Math.round(value * 100)}%`} />
           <Tooltip formatter={(value: number) => `${(value * 100).toFixed(1)}%`} />
-          <Line type="monotone" dataKey="founderPct" stroke="#7c2d12" strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="employeePct" stroke="#2563eb" strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="investorPct" stroke="#059669" strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="poolPct" stroke="#d97706" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="founderPct" stroke="#7c2d12" strokeWidth={3} dot={false} name="Founders" />
+          <Line type="monotone" dataKey="employeePct" stroke="#2563eb" strokeWidth={3} dot={false} name="Employees" />
+          <Line type="monotone" dataKey="investorPct" stroke="#059669" strokeWidth={3} dot={false} name="Modeled investor" />
+          <Line type="monotone" dataKey="poolPct" stroke="#d97706" strokeWidth={2} dot={false} name="Option pool" />
         </LineChart>
         </ResponsiveContainer>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600">
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#7c2d12" }} />Founders</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#2563eb" }} />Employees</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#059669" }} />Modeled investor</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#d97706" }} />Option pool</span>
       </div>
     </div>
   );
