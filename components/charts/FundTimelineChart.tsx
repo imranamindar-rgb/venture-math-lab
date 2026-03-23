@@ -101,6 +101,17 @@ export function FundTimelineChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600">
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#2563eb" }} />DPI</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#7c2d12" }} />TVPI</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#059669" }} />Paid-in %</span>
+        {benchmark ? (
+          <>
+            <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-4 rounded" style={{ backgroundColor: "#60a5fa" }} />Benchmark DPI</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-4 rounded" style={{ backgroundColor: "#f59e0b" }} />Benchmark TVPI</span>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/calculator", label: "Calculator" },
   { href: "/simulator", label: "Simulator" },
+  { href: "/sensitivity", label: "Sensitivity" },
   { href: "/cap-table", label: "Cap Table" },
   { href: "/fund", label: "Fund Lab" },
   { href: "/operator", label: "Operator" },

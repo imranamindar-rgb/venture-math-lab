@@ -74,8 +74,56 @@ export function CompareWorkspace() {
           <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Scenario compare</p>
           <h1 className="mt-2 font-heading text-4xl font-semibold">Baseline vs stress case</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-            Compare the same venture story under different market regimes, instruments, and dilution assumptions.
+            Compare the same venture story under different market regimes, instruments, and dilution assumptions. Use the quick-compare buttons below for common term-sheet trade-offs.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActivePreset("nvca_standard");
+                setComparisonPreset("stress_case");
+              }}
+              className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 hover:border-primary/40 hover:text-slate-950"
+            >
+              Standard vs stress
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                useScenarioStore.getState().updateActive({
+                  currentRoundKind: "safe_post_money",
+                  currentPreMoney: 12_000_000,
+                  currentRoundSize: 3_000_000,
+                });
+                useScenarioStore.getState().updateComparison({
+                  currentRoundKind: "priced_preferred",
+                  currentPreMoney: 18_000_000,
+                  currentRoundSize: 5_000_000,
+                });
+              }}
+              className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 hover:border-primary/40 hover:text-slate-950"
+            >
+              SAFE $12M vs priced $18M
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                useScenarioStore.getState().updateActive({
+                  currentPreMoney: 15_000_000,
+                  currentRoundSize: 3_000_000,
+                  marketOverlay: "base",
+                });
+                useScenarioStore.getState().updateComparison({
+                  currentPreMoney: 15_000_000,
+                  currentRoundSize: 3_000_000,
+                  marketOverlay: "bear",
+                });
+              }}
+              className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 hover:border-primary/40 hover:text-slate-950"
+            >
+              Base vs bear market
+            </button>
+          </div>
         </div>
         <Button
           onClick={() =>

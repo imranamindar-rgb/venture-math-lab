@@ -7,6 +7,7 @@ const routeLabels: Record<string, string> = {
   dashboard: "Dashboard",
   calculator: "Calculator",
   simulator: "Simulator",
+  sensitivity: "Sensitivity",
   "cap-table": "Cap Table",
   compare: "Compare",
   fund: "Fund Lab",
