@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 
 export function PageShell({ children }: PropsWithChildren) {
   return (
@@ -12,6 +13,7 @@ export function PageShell({ children }: PropsWithChildren) {
         Skip to content
       </a>
       <SiteHeader />
+      <Breadcrumb />
       <main id="main-content">{children}</main>
     </div>
   );

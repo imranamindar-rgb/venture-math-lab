@@ -42,17 +42,17 @@ export function ResultsDashboard({ summary }: { summary: SimulationSummary }) {
         <MetricCard
           label={`Founder ${summary.founder.riskBand}`}
           value={formatCurrency(summary.founder.median)}
-          caption={`P10 ${formatCurrency(summary.founder.p10)} to P90 ${formatCurrency(summary.founder.p90)}. 95% Monte Carlo CI ${confidenceLabel(summary.confidence.founderMedian.lower, summary.confidence.founderMedian.upper, formatCurrency)}.`}
+          caption={`P10 ${formatCurrency(summary.founder.p10)} to P90 ${formatCurrency(summary.founder.p90)}. 95% stability range ${confidenceLabel(summary.confidence.founderMedian.lower, summary.confidence.founderMedian.upper, formatCurrency)}.`}
         />
         <MetricCard
           label={`Employee ${summary.employee.riskBand}`}
           value={formatCurrency(summary.employee.median)}
-          caption={`Underwater risk ${formatPercent(summary.employee.underwaterProbability)}. 95% CI ${confidenceLabel(summary.confidence.employeeUnderwaterProbability.lower, summary.confidence.employeeUnderwaterProbability.upper, formatPercent)}.`}
+          caption={`Underwater risk ${formatPercent(summary.employee.underwaterProbability)}. 95% stability range ${confidenceLabel(summary.confidence.employeeUnderwaterProbability.lower, summary.confidence.employeeUnderwaterProbability.upper, formatPercent)}.`}
         />
         <MetricCard
           label={`Investor ${summary.investor.riskBand}`}
           value={formatCurrency(summary.investor.median)}
-          caption={`Return-the-fund odds ${formatPercent(summary.investor.returnTheFundProbability)}. 95% CI ${confidenceLabel(summary.confidence.investorReturnTheFundProbability.lower, summary.confidence.investorReturnTheFundProbability.upper, formatPercent)}.`}
+          caption={`Return-the-fund odds ${formatPercent(summary.investor.returnTheFundProbability)}. 95% stability range ${confidenceLabel(summary.confidence.investorReturnTheFundProbability.lower, summary.confidence.investorReturnTheFundProbability.upper, formatPercent)}.`}
         />
       </div>
 
@@ -128,8 +128,8 @@ export function ResultsDashboard({ summary }: { summary: SimulationSummary }) {
             economics rely on rare power-law wins rather than typical outcomes.
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            Founder median 95% CI {confidenceLabel(summary.confidence.founderMedian.lower, summary.confidence.founderMedian.upper, formatCurrency)}.
-            Investor return-the-fund 95% CI{" "}
+            Founder median 95% stability range {confidenceLabel(summary.confidence.founderMedian.lower, summary.confidence.founderMedian.upper, formatCurrency)}.
+            Investor return-the-fund 95% stability range{" "}
             {confidenceLabel(
               summary.confidence.investorReturnTheFundProbability.lower,
               summary.confidence.investorReturnTheFundProbability.upper,

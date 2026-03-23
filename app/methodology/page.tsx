@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/PageShell";
 import { Card } from "@/components/ui/Card";
 import { glossary, methodologyLimitations, methodologySections, methodologySources } from "@/data/methodology";
+
+export const metadata: Metadata = {
+  title: "Methodology | Venture Math Lab",
+  description: "How the three venture finance engines work, their calibration sources, and scope limits.",
+};
 
 export default function MethodologyPage() {
   return (

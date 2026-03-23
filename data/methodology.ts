@@ -1,7 +1,7 @@
 export const methodologyLimitations = [
   "The app does not model warrants, capped participation, bespoke carve-outs, pay-to-play provisions, protective provisions, tax treatment, or custom legal drafting.",
   "SAFE and note previews are auditable and line-by-line, but they still assume standard-friendly documents rather than a law-firm-grade charter recreation.",
-  "Monte Carlo confidence intervals are simulation-stability bounds, not confidence about the real startup market.",
+  "Monte Carlo stability ranges reflect numerical simulation variance, not forecast confidence about the real startup market. Real-world outcomes are subject to additional uncertainty from market conditions, model assumptions, and parameter estimation.",
   "Benchmark overlays are calibration aids, not claims about what any one company or fund will achieve.",
 ];
 

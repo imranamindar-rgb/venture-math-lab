@@ -394,11 +394,11 @@ export function ReportWorkspace() {
             {simulation ? (
               <div className="mt-4 space-y-2 text-sm text-slate-600">
                 <p>
-                  Founder median 95% CI {formatCurrency(simulation.confidence.founderMedian.lower)} to{" "}
+                  Founder median 95% stability range {formatCurrency(simulation.confidence.founderMedian.lower)} to{" "}
                   {formatCurrency(simulation.confidence.founderMedian.upper)}.
                 </p>
                 <p>
-                  Investor return-the-fund 95% CI {formatPercent(simulation.confidence.investorReturnTheFundProbability.lower)} to{" "}
+                  Investor return-the-fund 95% stability range {formatPercent(simulation.confidence.investorReturnTheFundProbability.lower)} to{" "}
                   {formatPercent(simulation.confidence.investorReturnTheFundProbability.upper)}.
                 </p>
               </div>

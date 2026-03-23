@@ -479,7 +479,7 @@ function buildSummary(config: ScenarioConfig, paths: PathOutcome[]): SimulationS
       ...config.warningFlags,
       "Monte Carlo now tracks preferred series by seniority, but it still does not model bespoke warrants, pay-to-play, or charter-specific carve-outs.",
       "Unused option pool shares dilute holders in financing math but do not receive exit proceeds.",
-      "Confidence intervals use repeated batch estimates of the Monte Carlo paths. They are simulation-stability bounds, not market forecast bounds.",
+      "Stability ranges use repeated batch estimates of the Monte Carlo paths. They reflect simulation numerical variance, not forecast confidence about real-world outcomes.",
     ],
     pathsSample: paths.slice(0, 24),
   };
