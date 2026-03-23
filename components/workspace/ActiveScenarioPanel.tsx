@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { presetOptions, useScenarioStore } from "@/lib/state/scenario-store";
 import { ScenarioEditor } from "@/components/simulator/ScenarioEditor";
@@ -59,6 +59,16 @@ export function ActiveScenarioPanel({
   const [snapshotName, setSnapshotName] = useState("");
   const [showEditor, setShowEditor] = useState(!defaultCollapsed);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleOpenRequest = useCallback(() => {
+    setShowEditor(true);
+    document.getElementById("scenario-controls")?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("open-scenario-editor", handleOpenRequest);
+    return () => window.removeEventListener("open-scenario-editor", handleOpenRequest);
+  }, [handleOpenRequest]);
 
   const totalOwnership =
     active.capTable.founderPercent +
@@ -137,7 +147,7 @@ export function ActiveScenarioPanel({
   };
 
   return (
-    <div className="space-y-6">
+    <div id="scenario-controls" className="space-y-6 scroll-mt-20">
       <Card className="overflow-hidden">
         <div className="border-b border-border/70 pb-5">
           <div className="flex flex-wrap items-center justify-between gap-3">

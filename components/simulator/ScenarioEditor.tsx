@@ -291,8 +291,6 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
               />
             )}
           </Field>
-          {showStandard ? (
-            <>
           <Field
             label="Number of cofounders"
             hint="Set how many founders currently share the fully diluted founder stake. Each founder can then be named and sized separately."
@@ -318,6 +316,8 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
               ))}
             </select>
           </Field>
+          {showStandard ? (
+            <>
           <Field
             label="Employee common ownership"
             hint="This is already-issued employee equity, not the future pool reserved for new hires."
@@ -372,7 +372,6 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             </>
           ) : null}
         </div>
-        {showStandard ? (
         <div className="rounded-panel border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -433,7 +432,6 @@ export function ScenarioEditor({ config, onChange, onNestedChange }: ScenarioEdi
             ))}
           </div>
         </div>
-        ) : null}
       </section>
 
       {showStandard || showLegal ? (

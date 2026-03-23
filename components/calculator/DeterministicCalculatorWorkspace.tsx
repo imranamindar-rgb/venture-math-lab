@@ -7,6 +7,7 @@ import { OwnershipChart } from "@/components/charts/OwnershipChart";
 import { LiquidationDeadZoneChart } from "@/components/charts/LiquidationDeadZoneChart";
 import { ActiveScenarioPanel } from "@/components/workspace/ActiveScenarioPanel";
 import { Card } from "@/components/ui/Card";
+import { EditScenarioButton } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { formatCurrency, formatMultiple, formatPercent } from "@/lib/format";
@@ -57,6 +58,7 @@ export function DeterministicCalculatorWorkspace() {
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
             This page leads with the headline thresholds founders and investors actually care about, then lets you open the full scenario controls only if the answer needs more tuning.
           </p>
+          <EditScenarioButton className="mt-4" />
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-5">

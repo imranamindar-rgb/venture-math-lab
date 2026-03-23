@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { ButtonHTMLAttributes, PropsWithChildren } from "react";
+import type { ButtonHTMLAttributes, MouseEventHandler, PropsWithChildren } from "react";
 
 type Variant = "primary" | "secondary" | "ghost";
 
@@ -28,6 +28,28 @@ export function Button({
       {...props}
     >
       {children}
+    </button>
+  );
+}
+
+export function EditScenarioButton({ className }: { className?: string }) {
+  const handleClick: MouseEventHandler = () => {
+    window.dispatchEvent(new CustomEvent("open-scenario-editor"));
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={clsx(
+        "inline-flex items-center gap-2 rounded-full border border-primary/30 bg-amber-50 px-4 py-2 text-sm font-semibold text-primary hover:bg-amber-100 transition",
+        className,
+      )}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M11.5 1.5L14.5 4.5L5 14H2V11L11.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      Edit scenario
     </button>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, startTransition, useRef } from "react";
 
 import { useScenarioStore } from "@/lib/state/scenario-store";
+import { EditScenarioButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ResultsDashboard } from "@/components/simulator/ResultsDashboard";
 import { useSimulationRunner } from "@/components/simulator/useSimulationRunner";
@@ -40,6 +41,7 @@ export function SimulationWorkspace() {
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
                 The simulation page should answer the decision question first: what happens to founders, employees, and investors across the plausible range? The full input surface stays behind the results.
               </p>
+              <EditScenarioButton className="mt-4" />
             </div>
             <div className="rounded-full border border-border bg-slate-50 px-4 py-2 text-sm text-slate-600">
               {loading ? "Crunching 10,000 paths" : "Last run ready"}

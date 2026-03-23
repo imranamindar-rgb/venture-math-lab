@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { ActiveScenarioPanel } from "@/components/workspace/ActiveScenarioPanel";
 import { Card } from "@/components/ui/Card";
 import { SupportBadge } from "@/components/ui/SupportBadge";
-import { Button } from "@/components/ui/Button";
+import { Button, EditScenarioButton } from "@/components/ui/Button";
 import { summarizeCapTableWaterfall } from "@/lib/engines/cap-table-waterfall/analysis";
 import { getCurrentFinancing } from "@/lib/current-financing";
 import { formatCompactNumber, formatCurrency, formatPercent } from "@/lib/format";
@@ -383,6 +383,7 @@ export function CapTableWaterfallWorkspace() {
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
                 This page is now deliberately narrower. It focuses on current ownership, as-converted ownership, conversion bridges, and exit proceeds. The full scenario editor is available below, but it is no longer the first thing you have to parse.
               </p>
+              <EditScenarioButton className="mt-4" />
             </div>
             <SupportBadge level={diagnostics.supportLevel} label={diagnostics.supportLabel} />
           </div>
